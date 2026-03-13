@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 
-namespace FindBearings.Mobile;
+namespace OpenFindBearings.Mobile;
 
 public static class MauiProgram
 {

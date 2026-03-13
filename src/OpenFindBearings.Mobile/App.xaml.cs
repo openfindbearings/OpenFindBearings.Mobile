@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 
-namespace FindBearings.Mobile;
+namespace OpenFindBearings.Mobile;
 
 public partial class App : Application
 {
