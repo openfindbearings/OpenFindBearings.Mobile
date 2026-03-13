@@ -1,6 +1,6 @@
 ﻿using Foundation;
 
-namespace FindBearings.Mobile;
+namespace OpenFindBearings.Mobile;
 
 [Register("AppDelegate")]
 public class AppDelegate : MauiUIApplicationDelegate

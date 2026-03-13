@@ -1,7 +1,7 @@
 ﻿using Android.App;
 using Android.Runtime;
 
-namespace FindBearings.Mobile;
+namespace OpenFindBearings.Mobile;
 
 [Application]
 public class MainApplication : MauiApplication

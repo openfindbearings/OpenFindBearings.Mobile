@@ -1,7 +1,7 @@
 ﻿using ObjCRuntime;
 using UIKit;
 
-namespace FindBearings.Mobile;
+namespace OpenFindBearings.Mobile;
 
 public class Program
 {

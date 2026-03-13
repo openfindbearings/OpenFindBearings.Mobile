@@ -1,4 +1,4 @@
-﻿namespace FindBearings.Mobile;
+﻿namespace OpenFindBearings.Mobile;
 
 public partial class AppShell : Shell
 {
