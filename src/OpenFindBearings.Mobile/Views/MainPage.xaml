@@ -1,0 +1,82 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:cards="clr-namespace:Syncfusion.Maui.Toolkit.Cards;assembly=Syncfusion.Maui.Toolkit"
+             x:Class="OpenFindBearings.Mobile.Views.MainPage">
+    <ScrollView>
+        <VerticalStackLayout Spacing="0">
+
+            <!-- 头部搜索区域 - 企查查风格 -->
+            <Grid BackgroundColor="{AppThemeBinding Light=#2D8CFF, Dark=#1E1E1E}"
+                  Padding="16,20" RowDefinitions="Auto,Auto">
+
+                <!-- 标题行 -->
+                <HorizontalStackLayout Grid.Row="0" Spacing="8">
+                    <Label Text="企查查" FontSize="28" FontAttributes="Bold" 
+                           TextColor="#FFFFFF" />
+                    <Label Text="专业版" FontSize="14"
+                           VerticalOptions="End" />
+                </HorizontalStackLayout>
+
+                <!-- 搜索框 -->
+                <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,16,0,0">
+                    <Entry x:Name="SearchEntry" Placeholder="请输入企业名称或统一社会信用代码"
+                           TextColor="#FFFFFF" />
+                    <Button Grid.Column="1" Text="搜索" Style="{StaticResource PrimaryButton}"
+                            WidthRequest="80" />
+                </Grid>
+            </Grid>
+
+            <!-- 快捷入口 - 参考企查查专业版设计[citation:3] -->
+            <HorizontalStackLayout Margin="12,16" Spacing="12">
+                <Button Text="查企业" Style="{StaticResource PrimaryButton}" 
+                        BackgroundColor="{AppThemeBinding Light=#F0F0F0, Dark=#2D2D2D}"
+                        TextColor="{AppThemeBinding Light=#333333, Dark=#FFFFFF}" />
+                <Button Text="查风险" Style="{StaticResource PrimaryButton}"
+                        BackgroundColor="{AppThemeBinding Light=#F0F0F0, Dark=#2D2D2D}"
+                        TextColor="{AppThemeBinding Light=#333333, Dark=#FFFFFF}" />
+                <Button Text="查关系" Style="{StaticResource PrimaryButton}"
+                        BackgroundColor="{AppThemeBinding Light=#F0F0F0, Dark=#2D2D2D}"
+                        TextColor="{AppThemeBinding Light=#333333, Dark=#FFFFFF}" />
+            </HorizontalStackLayout>
+
+            <!-- 最近查询记录 - 卡片列表 -->
+            <Label Text="最近查询" Style="{StaticResource TitleLabel}" Margin="16,8,16,0" />
+
+            <CollectionView x:Name="RecentSearchView" ItemsSource="{Binding RecentSearches}"
+                            Margin="12,0">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Frame Style="{StaticResource CardFrame}">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <BoxView BackgroundColor="#2D8CFF" WidthRequest="4" HeightRequest="40"
+                                         CornerRadius="2" />
+                                <VerticalStackLayout Grid.Column="1" Margin="12,0">
+                                    <Label Text="{Binding CompanyName}" Style="{StaticResource TitleLabel}"
+                                           FontSize="16" />
+                                    <Label Text="{Binding LegalPerson}" Style="{StaticResource SubtitleLabel}" />
+                                </VerticalStackLayout>
+                                <Label Grid.Column="2" Text="{Binding Status}" FontSize="12"
+                                       TextColor="{Binding StatusColor}" VerticalOptions="Center" />
+                            </Grid>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <!-- 风险预警模块 - 企查查特色功能 -->
+            <Label Text="风险预警" Style="{StaticResource TitleLabel}" Margin="16,16,16,8" />
+
+            <Frame Style="{StaticResource CardFrame}" BackgroundColor="#FFF5F5">
+                <VerticalStackLayout>
+                    <Label Text="⚠️ 高风险预警" TextColor="#FF6B6B" FontAttributes="Bold" />
+                    <Label Text="您关注的3家企业有新增风险记录" FontSize="14" 
+                           TextColor="#666666" />
+                    <Button Text="查看详情" BackgroundColor="#FF6B6B" TextColor="White"
+                            CornerRadius="6" HeightRequest="36" Margin="0,8,0,0" />
+                </VerticalStackLayout>
+            </Frame>
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>
