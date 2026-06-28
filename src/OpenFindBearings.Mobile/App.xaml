@@ -1,7 +1,7 @@
 ﻿<?xml version = "1.0" encoding = "UTF-8" ?>
 <Application xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:local="clr-namespace:FindBearings.Mobile"
+             xmlns:local="clr-namespace:OpenFindBearings.Mobile"
              x:Class="OpenFindBearings.Mobile.App">
     <Application.Resources>
         <ResourceDictionary>
@@ -9,6 +9,71 @@
                 <ResourceDictionary Source="Resources/Styles/Colors.xaml" />
                 <ResourceDictionary Source="Resources/Styles/Styles.xaml" />
             </ResourceDictionary.MergedDictionaries>
+
+            <!-- 企查查风格 - 全局隐式样式 -->
+
+            <!-- Grid 布局样式 -->
+            <Style TargetType="Grid">
+                <Setter Property="ColumnSpacing" Value="10" />
+                <Setter Property="RowSpacing" Value="10" />
+                <Setter Property="Margin" Value="12" />
+                <Setter Property="Padding" Value="0" />
+            </Style>
+
+            <!-- 企查查卡片样式 -->
+            <Style TargetType="Frame" x:Key="CardFrame">
+                <Setter Property="BackgroundColor" 
+                        Value="{AppThemeBinding Light=#FFFFFF, Dark=#2D2D2D}" />
+                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="Padding" Value="16" />
+                <Setter Property="Margin" Value="12,6" />
+                <Setter Property="HasShadow" Value="True" />
+            </Style>
+
+            <!-- 标题样式 -->
+            <Style TargetType="Label" x:Key="TitleLabel">
+                <Setter Property="FontSize" Value="18" />
+                <Setter Property="FontAttributes" Value="Bold" />
+                <Setter Property="TextColor" 
+                        Value="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
+            </Style>
+
+            <!-- 副标题样式 -->
+            <Style TargetType="Label" x:Key="SubtitleLabel">
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="TextColor" 
+                        Value="{AppThemeBinding Light=#666666, Dark=#B0B0B0}" />
+            </Style>
+
+            <!-- 风险标签样式 -->
+            <Style TargetType="Label" x:Key="RiskLabel">
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="BackgroundColor" Value="#FF6B6B" />
+                <Setter Property="TextColor" Value="#FFFFFF" />
+                <Setter Property="Padding" Value="8,4" />
+                <Setter Property="Margin" Value="4,0" />
+            </Style>
+
+            <!-- Entry 输入框样式 -->
+            <Style TargetType="Entry">
+                <Setter Property="BackgroundColor" 
+                        Value="{AppThemeBinding Light=#F5F5F5, Dark=#3D3D3D}" />
+                <Setter Property="TextColor" 
+                        Value="{AppThemeBinding Light=#1A1A1A, Dark=#FFFFFF}" />
+                <Setter Property="FontSize" Value="16" />
+                <Setter Property="HeightRequest" Value="48" />
+                <!--<Setter Property="Padding" Value="12,0" />-->
+            </Style>
+
+            <!-- Button 按钮样式 - 主要按钮 -->
+            <Style TargetType="Button" x:Key="PrimaryButton">
+                <Setter Property="BackgroundColor" Value="#2D8CFF" />
+                <Setter Property="TextColor" Value="#FFFFFF" />
+                <Setter Property="FontSize" Value="16" />
+                <Setter Property="FontAttributes" Value="Bold" />
+                <Setter Property="CornerRadius" Value="8" />
+                <Setter Property="HeightRequest" Value="48" />
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>
