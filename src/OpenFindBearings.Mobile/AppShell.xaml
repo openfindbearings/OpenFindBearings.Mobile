@@ -20,7 +20,7 @@
             Icon="{mi:Fluent Icon=Home28}" />
 
         <ShellContent
-            Title="商家"
+            Title="入驻"
             ContentTemplate="{DataTemplate views:InquiryPage}"
             Icon="{mi:Fluent Icon=Backpack28}" />
 
