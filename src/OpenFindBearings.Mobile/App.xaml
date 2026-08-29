@@ -2,6 +2,7 @@
 <Application xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:OpenFindBearings.Mobile"
+             xmlns:mauiConv="clr-namespace:CommunityToolkit.Maui.Converters;assembly=CommunityToolkit.Maui"
              x:Class="OpenFindBearings.Mobile.App">
     <Application.Resources>
         <ResourceDictionary>
@@ -74,6 +75,7 @@
                 <Setter Property="CornerRadius" Value="8" />
                 <Setter Property="HeightRequest" Value="48" />
             </Style>
-        </ResourceDictionary>
-    </Application.Resources>
+                <mauiConv:InvertedBoolConverter x:Key="InverseBool" />
+            </ResourceDictionary>
+        </Application.Resources>
 </Application>
