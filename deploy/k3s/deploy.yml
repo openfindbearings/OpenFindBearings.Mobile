@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openfindbearings-mobile
+  namespace: openfindbearings
+  labels:
+    app: openfindbearings-mobile
+spec:
+  replicas: 1
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: openfindbearings-mobile
+  template:
+    metadata:
+      labels:
+        app: openfindbearings-mobile
+    spec:
+      containers:
+      - name: openfindbearings-mobile
+        image: ghcr.io/openfindbearings/openfindbearings-mobile:latest
+        ports:
+        - containerPort: 8080
+
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Production"
+        - name: ASPNETCORE_URLS
+          value: "http://+:8080"
+        - name: Api__BaseUrl
+          value: "http://openfindbearings-api:80"
+        - name: Identity__Authority
+          value: "http://openfindbearings-identity:80"
+        - name: Identity__Audience
+          value: "api:mobile"
+        - name: Identity__ClientId
+          value: "maui-client"
+        - name: Identity__ClientSecret
+          value: "maui-secret"
+
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openfindbearings-mobile
+  namespace: openfindbearings
+spec:
+  selector:
+    app: openfindbearings-mobile
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: openfindbearings-mobile-ingress
+  namespace: openfindbearings
+  labels:
+    name: openfindbearings-mobile-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    acme.cert-manager.io/http01-edit-in-place: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+      - mobile.515813.xyz
+    secretName: mobile-515813-xyz-tls
+
+  rules:
+  - host: "mobile.515813.xyz"
+    http:
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+               name: openfindbearings-mobile
+               port:
+                 number: 80
