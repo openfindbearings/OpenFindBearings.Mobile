@@ -1,0 +1,89 @@
+name: Deploy Mobile BFF
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Image tag'
+        required: false
+        default: 'latest'
+  release:
+    types: [published]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: openfindbearings/openfindbearings-mobile
+  DOTNET_VERSION: '10.0.x'
+  PROJECT_PATH: 'OpenFindBearings.Mobile/src/OpenFindBearings.Mobile/OpenFindBearings.Mobile.csproj'
+  NAMESPACE: openfindbearings
+  DEPLOYMENT: openfindbearings-mobile
+  CONTAINER: openfindbearings-mobile
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      docker_tag: ${{ steps.set_tag.outputs.docker_tag }}
+
+    steps:
+    - uses: actions/checkout@v6.0.2
+
+    - name: Set tag
+      id: set_tag
+      run: |
+        if [ "${{ github.event_name }}" = "release" ]; then
+          echo "docker_tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+        elif [ -n "${{ github.event.inputs.tag }}" ]; then
+          echo "docker_tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+        else
+          echo "docker_tag=latest" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Log in to GHCR
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build and push
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        file: OpenFindBearings.Mobile/Dockerfile
+        push: true
+        tags: |
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.set_tag.outputs.docker_tag }}
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    steps:
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v4
+
+    - name: Configure kubeconfig
+      run: |
+        mkdir -p $HOME/.kube
+        echo "${{ secrets.KUBECONFIG_CONTENT }}" > $HOME/.kube/config
+        chmod 600 $HOME/.kube/config
+
+    - name: Update image
+      run: |
+        TAG=${{ needs.build-and-push.outputs.docker_tag }}
+        kubectl set image deployment/${{ env.DEPLOYMENT }} \
+          ${{ env.CONTAINER }}=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG} \
+          -n ${{ env.NAMESPACE }}
+
+    - name: Wait for rollout
+      run: |
+        kubectl rollout status deployment/${{ env.DEPLOYMENT }} \
+          -n ${{ env.NAMESPACE }} \
+          --timeout=10m
