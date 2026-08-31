@@ -8,10 +8,8 @@ namespace OpenFindBearings.Mobile.Endpoints;
 /// </summary>
 public static class HomeEndpoints
 {
-    public static void MapHomeEndpoints(this WebApplication app)
+    public static void MapHomeEndpoints(this RouteGroupBuilder group)
     {
-        var group = app.MapGroup("/api/mobile")
-            .WithTags("首页");
 
         /// <summary>
         /// 首页聚合数据

@@ -8,10 +8,8 @@ namespace OpenFindBearings.Mobile.Endpoints;
 /// </summary>
 public static class BearingEndpoints
 {
-    public static void MapBearingEndpoints(this WebApplication app)
+    public static void MapBearingEndpoints(this RouteGroupBuilder group)
     {
-        var group = app.MapGroup("/api/mobile/bearings")
-            .WithTags("轴承");
 
         /// <summary>
         /// 搜索轴承

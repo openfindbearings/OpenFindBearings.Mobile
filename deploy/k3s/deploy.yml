@@ -88,11 +88,11 @@ spec:
   ingressClassName: nginx
   tls:
   - hosts:
-      - mobile.515813.xyz
-    secretName: mobile-515813-xyz-tls
+      - bff.515813.xyz
+    secretName: bff-515813-xyz-tls
 
   rules:
-  - host: "mobile.515813.xyz"
+  - host: "bff.515813.xyz"
     http:
       paths:
         - path: /

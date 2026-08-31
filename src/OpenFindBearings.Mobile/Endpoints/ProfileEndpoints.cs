@@ -9,11 +9,8 @@ namespace OpenFindBearings.Mobile.Endpoints;
 /// </summary>
 public static class ProfileEndpoints
 {
-    public static void MapProfileEndpoints(this WebApplication app)
+    public static void MapProfileEndpoints(this RouteGroupBuilder group)
     {
-        var group = app.MapGroup("/api/mobile/profile")
-            .WithTags("我的")
-            .RequireAuthorization();
 
         /// <summary>
         /// 获取用户资料（聚合 Identity + API）
