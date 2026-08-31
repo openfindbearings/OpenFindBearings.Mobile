@@ -8,7 +8,7 @@ on:
 
 env:
   DOTNET_VERSION: '10.0.x'
-  PROJECT_PATH: 'OpenFindBearings.Mobile/src/OpenFindBearings.Mobile/OpenFindBearings.Mobile.csproj'
+  PROJECT_PATH: 'src/OpenFindBearings.Mobile/OpenFindBearings.Mobile.csproj'
 
 jobs:
   build:

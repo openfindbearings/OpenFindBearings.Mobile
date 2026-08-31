@@ -14,7 +14,7 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: openfindbearings/openfindbearings-mobile
   DOTNET_VERSION: '10.0.x'
-  PROJECT_PATH: 'OpenFindBearings.Mobile/src/OpenFindBearings.Mobile/OpenFindBearings.Mobile.csproj'
+  PROJECT_PATH: 'src/OpenFindBearings.Mobile/OpenFindBearings.Mobile.csproj'
   NAMESPACE: openfindbearings
   DEPLOYMENT: openfindbearings-mobile
   CONTAINER: openfindbearings-mobile
@@ -56,7 +56,7 @@ jobs:
       uses: docker/build-push-action@v6
       with:
         context: .
-        file: OpenFindBearings.Mobile/Dockerfile
+        file: Dockerfile
         push: true
         tags: |
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.set_tag.outputs.docker_tag }}
