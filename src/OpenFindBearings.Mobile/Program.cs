@@ -67,10 +67,6 @@ var app = builder.Build();
 
 // ============ 中间件管道 ============
 
-// 静态文件（Taro H5 构建产物）
-app.UseDefaultFiles();
-app.UseStaticFiles();
-
 app.UseCors("AllowTaro");
 
 app.UseAuthentication();
@@ -81,15 +77,13 @@ app.MapHealthChecks("/health");
 app.MapHealthChecks("/health/live");
 app.MapHealthChecks("/health/ready");
 
-// ============ API 端点 ============
+// ============ API 端点（统一前缀 /mobile） ============
 
-app.MapHomeEndpoints();
-app.MapBearingEndpoints();
-app.MapMerchantEndpoints();
-app.MapProfileEndpoints();
-app.MapAuthEndpoints();
-
-// SPA 回退：非 API 路径全部返回 index.html
-app.MapFallbackToFile("index.html");
+var mobile = app.MapGroup("/mobile");
+mobile.MapHomeEndpoints();
+mobile.MapBearingEndpoints();
+mobile.MapMerchantEndpoints();
+mobile.MapProfileEndpoints();
+mobile.MapAuthEndpoints();
 
 app.Run();

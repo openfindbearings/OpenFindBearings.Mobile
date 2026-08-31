@@ -9,10 +9,8 @@ namespace OpenFindBearings.Mobile.Endpoints;
 /// </summary>
 public static class AuthEndpoints
 {
-    public static void MapAuthEndpoints(this WebApplication app)
+    public static void MapAuthEndpoints(this RouteGroupBuilder group)
     {
-        var group = app.MapGroup("/api/mobile/auth")
-            .WithTags("认证");
 
         /// <summary>
         /// 密码登录

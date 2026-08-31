@@ -8,10 +8,8 @@ namespace OpenFindBearings.Mobile.Endpoints;
 /// </summary>
 public static class MerchantEndpoints
 {
-    public static void MapMerchantEndpoints(this WebApplication app)
+    public static void MapMerchantEndpoints(this RouteGroupBuilder group)
     {
-        var group = app.MapGroup("/api/mobile/merchants")
-            .WithTags("商家");
 
         /// <summary>
         /// 搜索商家
