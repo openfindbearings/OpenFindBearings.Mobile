@@ -178,8 +178,7 @@ src/OpenFindBearings.Mobile/
 │   ├── BearingEndpoints.cs
 │   ├── MerchantEndpoints.cs
 │   ├── ProfileEndpoints.cs
-│   ├── AuthEndpoints.cs
-│   └── ConfigEndpoints.cs
+│   └── AuthEndpoints.cs
 ├── Services/                # 服务层
 │   ├── ApiClient.cs         # API HTTP 客户端
 │   └── AuthClient.cs        # Identity HTTP 客户端
@@ -190,5 +189,16 @@ src/OpenFindBearings.Mobile/
 
 ## 相关文档
 
+### 设计文档
+
 - [BFF 设计文档](./doc/OpenFindBearings.Mobile-BFF设计-v1.0.0.md)
-- [Taro 移动端设计](./OpenFindBearings.Taro/doc/OpenFindBearings.Taro移动端设计-v1.1.0.md)
+
+### 接口与规范
+
+- [API 端点说明](./doc/01-API端点说明/API端点说明-v1.0.0.md) — 完整端点清单、请求/响应结构、认证要求
+- [认证集成设计](./doc/02-认证集成设计/认证集成设计-v1.0.0.md) — JWT 验证、token 刷新、device_id 绑定
+- [缓存与限流策略](./doc/03-缓存与限流策略/缓存与限流策略-v1.0.0.md) — 缓存方案、限流规则、降级策略
+
+### 关联项目
+
+- [Taro 移动端设计](../OpenFindBearings.Taro/doc/OpenFindBearings.Taro移动端设计-v1.1.0.md)

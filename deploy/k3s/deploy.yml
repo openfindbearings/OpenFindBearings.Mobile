@@ -22,21 +22,10 @@ spec:
         ports:
         - containerPort: 8080
 
-        env:
-        - name: ASPNETCORE_ENVIRONMENT
-          value: "Production"
-        - name: ASPNETCORE_URLS
-          value: "http://+:8080"
-        - name: Api__BaseUrl
-          value: "http://openfindbearings-api:80"
-        - name: Identity__Authority
-          value: "http://openfindbearings-identity:80"
-        - name: Identity__Audience
-          value: "api:mobile"
-        - name: Identity__ClientId
-          value: "mobile-client"
-        - name: Identity__ClientSecret
-          value: "mobile-secret"
+        # 改动说明：环境变量改为引用 ConfigMap，与 Taro 共享同一配置源，避免双处维护
+        envFrom:
+        - configMapRef:
+            name: openfindbearings-mobile-config
 
         livenessProbe:
           httpGet:
