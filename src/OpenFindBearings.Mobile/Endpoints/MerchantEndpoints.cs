@@ -65,10 +65,11 @@ public static class MerchantEndpoints
         group.MapPost("/apply", async (
             ApplyRequest body,
             ApiClient api,
-            Microsoft.AspNetCore.Http.IHttpContextAccessor httpAccessor,
+            HttpContext http,
             CancellationToken ct) =>
         {
-            var userId = httpAccessor.HttpContext?.User?.FindFirst("sub")?.Value;
+            // 改动说明：Minimal API 原生支持 HttpContext 参数绑定，替代未注册 DI 的 IHttpContextAccessor
+            var userId = http.User.FindFirst("sub")?.Value;
             if (string.IsNullOrEmpty(userId))
                 return Results.Unauthorized();
 

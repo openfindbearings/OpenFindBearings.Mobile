@@ -34,9 +34,9 @@ spec:
         - name: Identity__Audience
           value: "api:mobile"
         - name: Identity__ClientId
-          value: "maui-client"
+          value: "mobile-client"
         - name: Identity__ClientSecret
-          value: "maui-secret"
+          value: "mobile-secret"
 
         livenessProbe:
           httpGet:
