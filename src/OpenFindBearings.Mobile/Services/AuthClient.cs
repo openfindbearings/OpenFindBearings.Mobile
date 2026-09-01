@@ -35,8 +35,9 @@ public class AuthClient
         try
         {
             var client = _httpClientFactory.CreateClient("Identity");
-            var clientId = _configuration["Identity:ClientId"] ?? "maui-client";
-            var clientSecret = _configuration["Identity:ClientSecret"] ?? "maui-secret";
+            // 改动说明：maui-client 统一重命名为 mobile-client，与 Identity SeedData 和 K8s 配置保持一致
+            var clientId = _configuration["Identity:ClientId"] ?? "mobile-client";
+            var clientSecret = _configuration["Identity:ClientSecret"] ?? "mobile-secret";
 
             var response = await client.PostAsync("/connect/token", new FormUrlEncodedContent(new Dictionary<string, string>
             {

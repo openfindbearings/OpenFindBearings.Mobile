@@ -208,8 +208,8 @@ mobile.MapAuthEndpoints();
   "Identity": {
     "Authority": "http://openfindbearings-identity:80",
     "Audience": "api:mobile",
-    "ClientId": "maui-client",
-    "ClientSecret": "maui-secret"
+    "ClientId": "mobile-client",
+    "ClientSecret": "mobile-secret"
   }
 }
 ```
@@ -223,8 +223,8 @@ mobile.MapAuthEndpoints();
 | `Api__BaseUrl` | http://openfindbearings-api:80 | API K8s 内部地址 |
 | `Identity__Authority` | http://openfindbearings-identity:80 | Identity K8s 内部地址 |
 | `Identity__Audience` | api:mobile | JWT Audience |
-| `Identity__ClientId` | maui-client | OAuth 客户端 ID |
-| `Identity__ClientSecret` | maui-secret | OAuth 客户端密钥 |
+| `Identity__ClientId` | mobile-client | OAuth 客户端 ID |
+| `Identity__ClientSecret` | mobile-secret | OAuth 客户端密钥 |
 
 ## 部署
 

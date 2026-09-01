@@ -117,8 +117,8 @@ kubectl rollout status deployment/openfindbearings-mobile --timeout=10m
 | Api__BaseUrl | http://openfindbearings-api:80 | API K8s 内部地址 |
 | Identity__Authority | http://openfindbearings-identity:80 | Identity K8s 内部地址 |
 | Identity__Audience | api:mobile | JWT Audience |
-| Identity__ClientId | maui-client | OAuth 客户端 ID |
-| Identity__ClientSecret | maui-secret | OAuth 客户端密钥 |
+| Identity__ClientId | mobile-client | OAuth 客户端 ID |
+| Identity__ClientSecret | mobile-secret | OAuth 客户端密钥 |
 
 ## 端点清单
 
