@@ -416,3 +416,6 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# K8s secret files (contain real credentials)
+deploy/k3s/secret.yml
