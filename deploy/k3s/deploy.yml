@@ -22,10 +22,12 @@ spec:
         ports:
         - containerPort: 8080
 
-        # 改动说明：环境变量改为引用 ConfigMap，与 Taro 共享同一配置源，避免双处维护
+        # 改动说明：环境变量分为 ConfigMap（非敏感）和 Secret（敏感）两部分注入
         envFrom:
         - configMapRef:
             name: openfindbearings-mobile-config
+        - secretRef:
+            name: openfindbearings-mobile-secrets
 
         livenessProbe:
           httpGet:
