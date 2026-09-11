@@ -27,22 +27,32 @@ public static class ProfileEndpoints
             if (string.IsNullOrEmpty(accessToken))
                 return Results.Unauthorized();
 
+            // 改动说明：核心身份字段（用户名/手机号/sub）直接读 access token claims——
+            // BFF 已启用 JwtBearer 验证，http.User 即有；不再依赖 Identity /me 那一跳，
+            // 上游 401/竞态不会再产生"已登录用户"空资料（此前双 null 回 401 的补丁一并撤销）。
+            // 扩展字段（昵称/isActive/注册时间/业务资料）best-effort 合并，失败留空由
+            // 页面下次进入时懒加载补齐（Taro my 页 didShow 会重拉 profile）
+            string Claim(params string[] types) => types
+                .Select(t => http.User.FindFirst(t)?.Value)
+                .FirstOrDefault(v => !string.IsNullOrEmpty(v)) ?? "";
+            var claimUserName = Claim(ClaimTypes.Name, "preferred_username", "name");
+            var claimPhone = Claim("phone_number");
+            var claimSub = Claim(ClaimTypes.NameIdentifier, "sub");
+            // claims 为空 = 令牌缺失/已过期（JwtBearer 未通过验证），回真 401 触发客户端刷新重放，
+            // 不能再返回 200 空资料（否则客户端永不刷新，登录态被误判丢失）
+            if (string.IsNullOrEmpty(claimSub))
+                return Results.Unauthorized();
+
             // Identity：登录账号信息（用户名/手机号/昵称）
             var userInfo = await authClient.GetUserInfoAsync(accessToken, ct);
             // API 业务库：资料扩展字段与统计（未 JIT 建号时可能为 null）
             var biz = await api.GetAsync<BizProfile>("/api/me/profile", accessToken, ct);
 
-            // 改动说明：access 过期(10分钟)时两个上游都 401 → 双双 null，原实现仍回 200 空资料，
-            // 客户端表现为"已登录用户/手机号消失"且不触发 401→refresh 自愈链（登录态被误判丢失）。
-            // 双 null 极大概率是令牌失效（单 JIT 缺号只会 biz null），改回真 401 让客户端刷新重试
-            if (userInfo is null && biz is null)
-                return Results.Unauthorized();
-
             return Results.Ok(new UserProfile
             {
-                Id = userInfo?.Id ?? biz?.Id.ToString() ?? "",
-                UserName = userInfo?.UserName ?? "",
-                PhoneNumber = userInfo?.PhoneNumber ?? "",
+                Id = claimSub.Length > 0 ? claimSub : (userInfo?.Id ?? biz?.Id.ToString() ?? ""),
+                UserName = claimUserName.Length > 0 ? claimUserName : (userInfo?.UserName ?? ""),
+                PhoneNumber = claimPhone.Length > 0 ? claimPhone : (userInfo?.PhoneNumber ?? ""),
                 Nickname = userInfo?.Nickname ?? biz?.Nickname,
                 Avatar = biz?.Avatar,
                 Occupation = biz?.Occupation,
@@ -108,6 +118,11 @@ public static class ProfileEndpoints
 
     private static string? GetAccessToken(HttpContext http)
     {
+        // 改动说明：与 MeEndpoints.GetToken 同规则——JwtBearer 未通过验证（无 NameIdentifier
+        // claim，即令牌缺失/过期/非法）一律视为无令牌返回 null，让端点回 401 触发客户端
+        // 刷新重放，杜绝过期令牌透传后上游 401 被吞成 200 空数据
+        if (string.IsNullOrEmpty(http.User.FindFirst(ClaimTypes.NameIdentifier)?.Value))
+            return null;
         return http.Request.Headers.Authorization
             .FirstOrDefault()?.Replace("Bearer ", "");
     }
