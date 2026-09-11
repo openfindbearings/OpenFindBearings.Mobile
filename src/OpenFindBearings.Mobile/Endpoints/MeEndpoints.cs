@@ -250,8 +250,16 @@ public static class MeEndpoints
     // ============ 工具 ============
 
     /// <summary>从入站请求提取用户 access token（与 ProfileEndpoints.GetAccessToken 同逻辑）</summary>
-    private static string? GetToken(HttpContext http) =>
-        http.Request.Headers.Authorization.FirstOrDefault()?.Replace("Bearer ", "");
+        // 改动说明：仅当 JwtBearer 验证通过（主体含 NameIdentifier claim）才返回令牌。
+        // 原实现把过期/非法令牌原样透传给上游，401 被吞成"200 空数据"，客户端 401→刷新
+        // 自愈链永不触发（收藏列表空、资料空白的根因）。返回 null 后各端点既有的
+        // IsNullOrEmpty→Unauthorized 门槛自然生效，客户端刷新后重放即恢复
+        private static string? GetToken(HttpContext http)
+        {
+            if (string.IsNullOrEmpty(http.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value))
+                return null;
+            return http.Request.Headers.Authorization.FirstOrDefault()?.Replace("Bearer ", "");
+        }
 
     /// <summary>
     /// 把 API 相对路径拼成 BFF 公网绝对 URL。
