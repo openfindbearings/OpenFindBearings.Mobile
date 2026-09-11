@@ -16,9 +16,10 @@
 | 首页聚合 | `/mobile/home` 一次返回热门轴承+推荐商家+品牌+类型 |
 | 轴承代理 | 搜索、详情、在售商家、替代品 |
 | 商家代理 | 搜索、详情、在售商品 |
-| 认证代理 | 密码登录、短信登录、验证码发送、令牌刷新（device_id 绑定） |
+| 认证代理 | 注册、密码登录、短信登录、验证码发送、令牌刷新、登出（device_id 绑定，IP 限流保护） |
 | 用户资料 | 聚合 Identity 用户信息 + API 业务数据 |
-| 站点配置 | `/mobile/config` 返回站点名称/备案号/客服联系方式 |
+| 个人中心 | 收藏/关注/浏览历史 CRUD、资料编辑、头像上传 |
+| 媒体代理 | `/mobile/media/*` 流式转发 API 静态图片 |
 
 ## 架构
 
@@ -59,25 +60,31 @@ Taro H5 (mobile.515813.xyz)          小程序/未来App
 | `/mobile/bearings/search` | GET | 轴承搜索 |
 | `/mobile/bearings/{id}` | GET | 轴承详情 |
 | `/mobile/bearings/{id}/merchants` | GET | 轴承在售商家 |
+| `/mobile/bearings/{id}/interchanges` | GET | 轴承替代品 |
 | `/mobile/merchants/search` | GET | 商家搜索 |
 | `/mobile/merchants/{id}` | GET | 商家详情 |
 | `/mobile/merchants/{id}/bearings` | GET | 商家在售商品 |
-| `/mobile/config` | GET | 站点配置 |
 
-### 认证端点
+### 认证端点（限流 10/min/IP）
 
 | 路径 | 方法 | 说明 |
 |------|------|------|
+| `/mobile/auth/register` | POST | 注册（自动登录） |
 | `/mobile/auth/login` | POST | 密码登录 |
 | `/mobile/auth/login-sms` | POST | 短信登录 |
+| `/mobile/auth/send-code` | POST | 发送验证码 |
 | `/mobile/auth/refresh` | POST | 刷新令牌 |
-| `/mobile/auth/send-sms` | POST | 发送验证码 |
+| `/mobile/auth/logout` | POST | 登出 |
 
 ### 需登录端点
 
-| 路径 | 方法 | 认证 | 说明 |
-|------|------|------|------|
-| `/mobile/profile` | GET | Bearer | 用户资料 |
+| 路径 | 方法 | 说明 |
+|------|------|------|
+| `/mobile/profile` | GET | 用户资料 |
+| `/mobile/favorites` | GET | 收藏列表 |
+| `/mobile/followed` | GET | 关注列表 |
+| `/mobile/me/*` | POST/PUT/DELETE | 收藏/关注/历史/资料编辑/头像上传 |
+| `/mobile/media/{path}` | GET | 媒体代理 |
 
 ## 健康检查
 
@@ -91,13 +98,13 @@ Taro H5 (mobile.515813.xyz)          小程序/未来App
 
 ### 设计文档
 
-- [BFF 设计文档](./doc/OpenFindBearings.Mobile-BFF设计-v1.0.0.md)
+- [BFF 设计文档](./doc/OpenFindBearings.Mobile-BFF设计-v1.1.0.md)
 
 ### 接口与规范
 
-- [API 端点说明](./doc/01-API端点说明/API端点说明-v1.1.0.md) — 完整端点清单、请求/响应结构、认证要求
-- [认证集成设计](./doc/02-认证集成设计/认证集成设计-v1.0.0.md) — JWT 验证、token 刷新、device_id 绑定
-- [缓存与限流策略](./doc/03-缓存与限流策略/缓存与限流策略-v1.0.0.md) — 缓存方案、限流规则、降级策略
+- [API 端点说明](./doc/01-API端点说明/API端点说明-v1.2.0.md) — 完整端点清单、请求/响应结构、认证要求
+- [认证集成设计](./doc/02-认证集成设计/认证集成设计-v1.1.0.md) — JWT 验证、token 刷新、device_id 绑定
+- [缓存与限流策略](./doc/03-缓存与限流策略/缓存与限流策略-v1.1.0.md) — 缓存方案、限流规则、降级策略
 
 ### 关联项目
 
