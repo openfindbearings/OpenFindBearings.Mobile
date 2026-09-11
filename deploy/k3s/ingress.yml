@@ -1,0 +1,33 @@
+# BFF 公网入口（bff.515813.xyz）。
+# 改动说明：集群里该 Ingress 一直只存在于线上（仓库缺文件，配置漂移），此文件补齐对账；
+# proxy-body-size=5m 为头像上传必需——ingress-nginx 默认 1m 会把 2MB 图片请求 413 拦在门外。
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: openfindbearings-mobile-ingress
+  namespace: openfindbearings
+  labels:
+    name: openfindbearings-mobile-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    acme.cert-manager.io/http01-edit-in-place: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "5m"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+      - bff.515813.xyz
+    secretName: bff-515813-xyz-tls
+  rules:
+  - host: bff.515813.xyz
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: openfindbearings-mobile
+            port:
+              number: 80
