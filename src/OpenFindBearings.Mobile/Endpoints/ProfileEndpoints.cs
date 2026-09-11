@@ -32,6 +32,12 @@ public static class ProfileEndpoints
             // API 业务库：资料扩展字段与统计（未 JIT 建号时可能为 null）
             var biz = await api.GetAsync<BizProfile>("/api/me/profile", accessToken, ct);
 
+            // 改动说明：access 过期(10分钟)时两个上游都 401 → 双双 null，原实现仍回 200 空资料，
+            // 客户端表现为"已登录用户/手机号消失"且不触发 401→refresh 自愈链（登录态被误判丢失）。
+            // 双 null 极大概率是令牌失效（单 JIT 缺号只会 biz null），改回真 401 让客户端刷新重试
+            if (userInfo is null && biz is null)
+                return Results.Unauthorized();
+
             return Results.Ok(new UserProfile
             {
                 Id = userInfo?.Id ?? biz?.Id.ToString() ?? "",
