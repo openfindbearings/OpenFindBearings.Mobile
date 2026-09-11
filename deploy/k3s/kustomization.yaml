@@ -4,3 +4,7 @@ namespace: openfindbearings
 
 resources:
   - deploy.yml
+  # 改动说明：补齐仓库与集群的对账件。ingress.yml 为线上既有资源入仓；
+  # configmap.yml 修正 Audience 旧值（api:mobile → openfindbearings-api），
+  # apply 前须先填 Internal__ApiToken 真实值，防止占位符覆盖现网配置
+  - ingress.yml
