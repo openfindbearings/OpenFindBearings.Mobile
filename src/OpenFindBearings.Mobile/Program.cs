@@ -106,6 +106,16 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// 修复 B5：把入站 X-Merchant-Id 商户上下文头复制到 Scoped ApiClient，
+// 所有代理到 API 的请求自动透传（归属校验在 API UserContextMiddleware 完成）
+app.Use(async (context, next) =>
+{
+    var mid = context.Request.Headers["X-Merchant-Id"].FirstOrDefault();
+    if (!string.IsNullOrEmpty(mid))
+        context.RequestServices.GetRequiredService<OpenFindBearings.Mobile.Services.ApiClient>().MerchantId = mid;
+    await next();
+});
+
 // 健康检查
 app.MapHealthChecks("/health");
 app.MapHealthChecks("/health/live");
@@ -121,6 +131,7 @@ var mobile = app.MapGroup("/mobile");
 mobile.MapHomeEndpoints();
 mobile.MapGroup("/bearings").MapBearingEndpoints();
 mobile.MapGroup("/merchants").MapMerchantEndpoints();
+mobile.MapGroup("/merchant").MapMerchantManageEndpoints();
 mobile.MapProfileEndpoints();
 // /mobile/me/*：收藏/关注/历史/资料编辑写操作代理（用户 token 透传）
 mobile.MapGroup("/me").MapMeEndpoints();
