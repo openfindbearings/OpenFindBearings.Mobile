@@ -1,0 +1,20 @@
+# BFF 非敏感配置。改动说明：线上 ConfigMap 此前只存在于集群（仓库缺件），
+# 且 Identity__Audience 残留旧值 api:mobile——用户令牌 aud 实为 openfindbearings-api，
+# 导致 BFF JwtBearer 验证恒失败（v1.0.14 起 BFF 端点按 claims 门槛判 401 才暴露）。
+# 本文件为对账后的正确基线：Identity__Audience 必须为 openfindbearings-api。
+# 注意：Internal__ApiToken 为占位符，apply 前须填入与现网一致的真实值
+# （或改用 Secret 承载，见 secret-template.yml），否则会打断 Sync 的内部接口调用。
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openfindbearings-mobile-config
+  namespace: openfindbearings
+data:
+  ASPNETCORE_URLS: "http://+:8080"
+  Api__BaseUrl: "http://openfindbearings-api:80"
+  Identity__Authority: "http://openfindbearings-identity:80"
+  Identity__ClientId: "mobile-client"
+  # 受众=资源服务器名（与 API 的 aud 一致），不是 scope 值 api:mobile
+  Identity__Audience: "openfindbearings-api"
+  # 占位符：apply 前替换为真实内部令牌
+  Internal__ApiToken: "REPLACE_ME"

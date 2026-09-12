@@ -25,6 +25,26 @@ public class ApiClient
     }
 
     /// <summary>
+    /// 当前请求的商户上下文ID（修复 B5：一人多商户时透传 X-Merchant-Id 到 API）。
+    /// ApiClient 为 Scoped 每请求一实例，端点入口赋值后各方法共享，无并发串扰
+    /// </summary>
+    public string? MerchantId { get; set; }
+
+    /// <summary>
+    /// 创建带认证头与商户上下文头的 API 客户端
+    /// </summary>
+    private HttpClient CreateApiClient(string? accessToken = null)
+    {
+        var client = _httpClientFactory.CreateClient("Api");
+        if (!string.IsNullOrEmpty(accessToken))
+            client.DefaultRequestHeaders.Authorization = new("Bearer", accessToken);
+        // API 侧 UserContextMiddleware 依据该头判定当前操作商户
+        if (!string.IsNullOrEmpty(MerchantId))
+            client.DefaultRequestHeaders.TryAddWithoutValidation("X-Merchant-Id", MerchantId);
+        return client;
+    }
+
+    /// <summary>
     /// GET 请求（公开接口，不带 JWT）
     /// </summary>
     public async Task<T?> GetAsync<T>(string path, CancellationToken ct = default) where T : class
@@ -51,9 +71,7 @@ public class ApiClient
     {
         try
         {
-            var client = _httpClientFactory.CreateClient("Api");
-            if (!string.IsNullOrEmpty(accessToken))
-                client.DefaultRequestHeaders.Authorization = new("Bearer", accessToken);
+            var client = CreateApiClient(accessToken);
             var response = await client.GetAsync(path, ct);
             response.EnsureSuccessStatusCode();
             var wrapper = await response.Content.ReadFromJsonAsync<ApiResponseWrapper<T>>(JsonOptions, ct);
@@ -73,9 +91,7 @@ public class ApiClient
     {
         try
         {
-            var client = _httpClientFactory.CreateClient("Api");
-            if (!string.IsNullOrEmpty(accessToken))
-                client.DefaultRequestHeaders.Authorization = new("Bearer", accessToken);
+            var client = CreateApiClient(accessToken);
             var response = await client.PostAsJsonAsync(path, body, ct);
             response.EnsureSuccessStatusCode();
             var wrapper = await response.Content.ReadFromJsonAsync<ApiResponseWrapper<T>>(JsonOptions, ct);
@@ -115,9 +131,7 @@ public class ApiClient
     {
         try
         {
-            var client = _httpClientFactory.CreateClient("Api");
-            if (!string.IsNullOrEmpty(accessToken))
-                client.DefaultRequestHeaders.Authorization = new("Bearer", accessToken);
+            var client = CreateApiClient(accessToken);
             var response = await client.GetAsync(path, ct);
             response.EnsureSuccessStatusCode();
             var wrapper = await response.Content.ReadFromJsonAsync<ApiResponseWrapper<PagedResult<T>>>(JsonOptions, ct);
@@ -138,9 +152,7 @@ public class ApiClient
     {
         try
         {
-            var client = _httpClientFactory.CreateClient("Api");
-            if (!string.IsNullOrEmpty(accessToken))
-                client.DefaultRequestHeaders.Authorization = new("Bearer", accessToken);
+            var client = CreateApiClient(accessToken);
             var response = await client.PutAsJsonAsync(path, body, ct);
             response.EnsureSuccessStatusCode();
             var wrapper = await response.Content.ReadFromJsonAsync<ApiResponseWrapper<T>>(JsonOptions, ct);
@@ -181,8 +193,7 @@ public class ApiClient
     {
         try
         {
-            var client = _httpClientFactory.CreateClient("Api");
-            client.DefaultRequestHeaders.Authorization = new("Bearer", accessToken);
+            var client = CreateApiClient(accessToken);
             using var content = new MultipartFormDataContent();
             var streamContent = new StreamContent(fileStream);
             streamContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
@@ -208,9 +219,7 @@ public class ApiClient
     {
         try
         {
-            var client = _httpClientFactory.CreateClient("Api");
-            if (!string.IsNullOrEmpty(accessToken))
-                client.DefaultRequestHeaders.Authorization = new("Bearer", accessToken);
+            var client = CreateApiClient(accessToken);
             var response = await client.PutAsJsonAsync(path, body, ct);
             return response.IsSuccessStatusCode;
         }
@@ -228,9 +237,7 @@ public class ApiClient
     {
         try
         {
-            var client = _httpClientFactory.CreateClient("Api");
-            if (!string.IsNullOrEmpty(accessToken))
-                client.DefaultRequestHeaders.Authorization = new("Bearer", accessToken);
+            var client = CreateApiClient(accessToken);
             var response = await client.PostAsync(path, null, ct);
             return response.IsSuccessStatusCode;
         }
@@ -248,9 +255,7 @@ public class ApiClient
     {
         try
         {
-            var client = _httpClientFactory.CreateClient("Api");
-            if (!string.IsNullOrEmpty(accessToken))
-                client.DefaultRequestHeaders.Authorization = new("Bearer", accessToken);
+            var client = CreateApiClient(accessToken);
             var response = await client.DeleteAsync(path, ct);
             return response.IsSuccessStatusCode;
         }
