@@ -334,7 +334,8 @@ public static class MerchantEndpoints
         string? Mobile = null,
         string? Email = null,
         string? Address = null,
-        bool InitiatorJoins = true);
+        bool InitiatorJoins = true,
+        Guid? TargetMerchantId = null);
 
     /// <summary>
     /// 接受提名请求体（对齐 API AcceptNominationRequest）
