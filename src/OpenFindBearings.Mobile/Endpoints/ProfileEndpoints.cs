@@ -58,8 +58,8 @@ public static class ProfileEndpoints
                 Occupation = biz?.Occupation,
                 CompanyName = biz?.CompanyName,
                 Industry = biz?.Industry,
-                MerchantId = biz?.MerchantId,
-                MerchantName = biz?.MerchantName,
+                // 改动说明：不再透传 MerchantId/MerchantName——API 已废弃并移除 User.MerchantId 单值列，
+                //   商户信息改由成员表接口单独获取
                 FavoriteCount = biz?.FavoriteCount ?? 0,
                 FollowCount = biz?.FollowCount ?? 0,
                 IsActive = userInfo?.IsActive ?? true,
@@ -148,8 +148,6 @@ public static class ProfileEndpoints
         public int? Occupation { get; set; }
         public string? CompanyName { get; set; }
         public string? Industry { get; set; }
-        public Guid? MerchantId { get; set; }
-        public string? MerchantName { get; set; }
         public int FavoriteCount { get; set; }
         public int FollowCount { get; set; }
         public bool IsActive { get; set; }
@@ -166,8 +164,6 @@ public static class ProfileEndpoints
         int? Occupation,
         string? CompanyName,
         string? Industry,
-        Guid? MerchantId,
-        string? MerchantName,
         int FavoriteCount,
         int FollowCount);
 
