@@ -124,6 +124,26 @@ public static class MerchantEndpoints
         .RequireAuthorization();
 
         /// <summary>
+        /// 申请人自助撤回待审核的入驻申请（需登录）
+        /// </summary>
+        group.MapPost("/{merchantId:guid}/withdraw", async (
+            Guid merchantId,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token))
+                return Results.Unauthorized();
+            var ok = await api.PostVoidAsync($"/api/merchant/{merchantId}/withdraw", token, ct);
+            return Results.Ok(new { success = ok, message = ok ? "入驻申请已撤回" : "撤回失败" });
+        })
+        .WithName("WithdrawMerchantApplication")
+        .WithSummary("撤回入驻申请")
+        .WithDescription("申请人撤回自己待审核的入驻申请，需登录")
+        .RequireAuthorization();
+
+        /// <summary>
         /// 认领搜索爬虫商家（需登录）
         /// </summary>
         group.MapGet("/claimable", async (
