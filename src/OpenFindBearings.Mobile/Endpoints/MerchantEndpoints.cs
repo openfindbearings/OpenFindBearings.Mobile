@@ -402,7 +402,7 @@ public static class MerchantEndpoints
     /// </summary>
     public record MerchantApplicationItem(
         Guid MerchantId, string MerchantName, string Status,
-        string? RejectReason, string Role, bool IsVerified);
+        string? RejectReason, string Role, bool IsVerified, string? LogoUrl);
 
     /// <summary>
     /// 可认领爬虫商家项（对齐 API ClaimableMerchantDto）

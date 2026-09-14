@@ -140,6 +140,72 @@ public static class MerchantManageEndpoints
         .WithSummary("上传营业执照")
         .WithDescription("商户上传/更新营业执照照片用于认证，需登录且为商户成员")
         .RequireAuthorization();
+
+        /// <summary>
+        /// 获取当前商户资料（商户信息维护页读，走 X-Merchant-Id 上下文）
+        /// </summary>
+        group.MapGet("/profile", async (
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            // API 已按当前商户上下文(X-Merchant-Id)定位，ApiClient 自动透传该头
+            var result = await api.GetAsync<MerchantProfile>("/api/merchant/profile", token, ct);
+            return result is null ? Results.NotFound() : Results.Ok(result);
+        })
+        .WithName("GetMerchantProfile")
+        .WithSummary("获取商户资料")
+        .WithDescription("读取当前商户上下文资料，供商户信息维护页编辑回填")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 更新当前商户资料（商户信息维护页写，需商户管理员，由 API 校验）
+        /// </summary>
+        group.MapPut("/profile", async (
+            UpdateMerchantProfileRequest body,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var ok = await api.PutVoidAsync("/api/merchant/profile", body, token, ct);
+            return Results.Ok(new { success = ok, message = ok ? "资料已更新" : "更新失败（可能无管理员权限）" });
+        })
+        .WithName("UpdateMerchantProfile")
+        .WithSummary("更新商户资料")
+        .WithDescription("更新当前商户上下文资料（需商户管理员权限）")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 上传商户 Logo：透传 multipart 到 API 落盘，返回经 BFF 媒体代理的绝对 URL（同头像规范）。
+        /// 改动说明：仅返回 URL，实际写入 DB 由维护页保存 profile 时带 logoUrl 完成。
+        /// </summary>
+        group.MapPost("/logo", async (
+            IFormFile file,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            if (file == null || file.Length == 0)
+                return Results.Ok(new { success = false, message = "请选择图片" });
+
+            using var stream = file.OpenReadStream();
+            var data = await api.UploadAsync<LogoUrlResult>(
+                "/api/merchant/logo", stream, file.FileName, file.ContentType ?? "image/jpeg", token, ct);
+            if (data?.Url == null)
+                return Results.Ok(new { success = false, message = "上传失败（可能无管理员权限）" });
+
+            return Results.Ok(new { success = true, url = MeEndpoints.PublicUrl(http, data.Url) });
+        })
+        .WithName("UploadMerchantLogo")
+        .WithSummary("上传商户Logo")
+        .WithDescription("上传商户 Logo 图片，返回可访问 URL（需商户管理员权限，保存资料时落库）")
+        .RequireAuthorization();
     }
 
     /// <summary>
@@ -170,4 +236,24 @@ public static class MerchantManageEndpoints
         string? BearingTypeName, string? BrandName,
         decimal? InnerDiameter, decimal? OuterDiameter, decimal? Width,
         string? Price, bool IsOnSale);
+
+    /// <summary>
+    /// 商户资料（对齐 API MerchantDetailDto 中维护页所需字段）
+    /// </summary>
+    public record MerchantProfile(
+        Guid Id, string Name, string? CompanyName, string? Type,
+        string? ContactPerson, string? Phone, string? Mobile, string? Email, string? Address,
+        string? LogoUrl, string? Website, string? UnifiedSocialCreditCode,
+        string? Description, string? BusinessScope, bool IsVerified, string? Status);
+
+    /// <summary>
+    /// 更新商户资料请求体（对齐 API UpdateMerchantCommand 的可编辑字段，null=保留）
+    /// </summary>
+    public record UpdateMerchantProfileRequest(
+        string? Name, string? CompanyName, string? EnglishName, string? UnifiedSocialCreditCode,
+        int? Type, string? Description, string? BusinessScope, string? LogoUrl, string? Website,
+        string? ContactPerson, string? Phone, string? Mobile, string? Email, string? Address);
+
+    /// <summary>API Logo 上传响应 {url}</summary>
+    public record LogoUrlResult(string? Url);
 }
