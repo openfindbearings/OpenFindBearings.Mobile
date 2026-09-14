@@ -129,6 +129,8 @@ app.MapHealthChecks("/health/ready");
 // 既消除歧义又对齐 Taro config.ts 的路径契约。home/profile 保持在 /mobile 根。
 var mobile = app.MapGroup("/mobile");
 mobile.MapHomeEndpoints();
+// 改动说明：站点配置与版本检查匿名代理（Taro 启动检查/设置页消费，修复 /mobile/config 404）
+mobile.MapConfigEndpoints();
 mobile.MapGroup("/bearings").MapBearingEndpoints();
 mobile.MapGroup("/merchants").MapMerchantEndpoints();
 mobile.MapGroup("/merchant").MapMerchantManageEndpoints();
