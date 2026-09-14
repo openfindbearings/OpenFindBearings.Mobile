@@ -73,8 +73,30 @@ public static class MerchantEndpoints
             if (string.IsNullOrEmpty(token))
                 return Results.Unauthorized();
 
-            var result = await api.PostAsync<object>("/api/merchant/apply", body, token, ct);
-            return Results.Ok(new { message = "申请已提交，等待审核" });
+            // 改动说明：改用带错误透传的 PostWithResultAsync。原 PostAsync<object> 会把 API 的
+            //   所有 4xx/409 吞成 null 且端点固定返回 200，导致"已被他人认领/已认证/新建撞名"等错误
+            //   前端完全看不到（虚假成功）。现按状态码与错误码原样转发。
+            var result = await api.PostWithResultAsync<ApplyResultData>("/api/merchant/apply", body, token, ct);
+            if (result.Success)
+                return Results.Ok(new { message = result.Data?.Message ?? "申请已提交，等待审核", merchantId = result.Data?.MerchantId });
+
+            // 可认领冲突：409 + 结构化字段，供前端弹窗引导"改为认领"
+            if (result.StatusCode == 409 && result.ErrorCode == "MERCHANT_CLAIMABLE_EXISTS")
+                return Results.Json(new
+                {
+                    success = false,
+                    code = "MERCHANT_CLAIMABLE_EXISTS",
+                    message = result.ErrorText ?? "库中已存在可认领的同名商户",
+                    existingMerchantId = result.GetExtension("existingMerchantId"),
+                    existingName = result.GetExtension("existingName")
+                }, statusCode: 409);
+
+            // 其他错误：沿用上游状态码与文案透传（无状态码时兜底 502）
+            return Results.Json(new
+            {
+                success = false,
+                message = result.ErrorText ?? "申请提交失败，请稍后重试"
+            }, statusCode: result.StatusCode > 0 ? result.StatusCode : 502);
         })
         .WithName("ApplyMerchant")
         .WithSummary("商家入驻申请")
@@ -321,6 +343,11 @@ public static class MerchantEndpoints
         string? LicenseUrl = null);
 
     /// <summary>
+    /// 入驻申请成功响应 data（对齐 API /api/merchant/apply 的 {merchantId, message}）
+    /// </summary>
+    public sealed record ApplyResultData(string? MerchantId, string? Message);
+
+    /// <summary>
     /// 提名他人为管理员请求体（对齐 API NominateMerchantRequest）
     /// </summary>
     public record NominateRequest(
@@ -375,7 +402,7 @@ public static class MerchantEndpoints
     /// </summary>
     public record MerchantApplicationItem(
         Guid MerchantId, string MerchantName, string Status,
-        string? RejectReason, string Role, bool IsVerified);
+        string? RejectReason, string Role, bool IsVerified, string? LogoUrl);
 
     /// <summary>
     /// 可认领爬虫商家项（对齐 API ClaimableMerchantDto）

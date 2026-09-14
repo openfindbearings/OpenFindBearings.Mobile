@@ -105,6 +105,72 @@ public class ApiClient
     }
 
     /// <summary>
+    /// 带错误体透传的 POST（改动说明：/apply 等需要感知 4xx 状态码/结构化错误码的端点用；
+    ///   旧 PostAsync 吞错返 null，无法把 API 的 InvalidOperationException 或 409 冲突转给前端）
+    /// </summary>
+    public async Task<ApiCallResult<T>> PostWithResultAsync<T>(
+        string path, object body, string? accessToken = null, CancellationToken ct = default) where T : class
+    {
+        HttpResponseMessage response;
+        try
+        {
+            var client = CreateApiClient(accessToken);
+            response = await client.PostAsJsonAsync(path, body, ct);
+        }
+        catch (Exception ex)
+        {
+            // 上游不可达（网络/服务未起）：统一走 502 转发前端
+            _logger.LogWarning(ex, "API POST {Path} 建连失败", path);
+            return new ApiCallResult<T>(false, 502, null, "UPSTREAM_UNREACHABLE", "上游服务连接失败，请稍后重试", default);
+        }
+        using (response)
+        {
+            var status = (int)response.StatusCode;
+            var text = await response.Content.ReadAsStringAsync(ct);
+            JsonElement bodyJson = default;
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                try { bodyJson = JsonDocument.Parse(text).RootElement.Clone(); }
+                catch (JsonException) { /* 非 JSON 体（如网关 HTML），保留默认由 ErrorText 兜底 */ }
+            }
+            var errCode = GetExtFromBody(bodyJson, "code");
+            var errText = GetExtFromBody(bodyJson, "detail")
+                       ?? GetExtFromBody(bodyJson, "message")
+                       ?? GetExtFromBody(bodyJson, "title");
+            if (response.IsSuccessStatusCode)
+            {
+                T? data = null;
+                if (bodyJson.ValueKind == JsonValueKind.Object)
+                {
+                    try
+                    {
+                        var wrapper = JsonSerializer.Deserialize<ApiResponseWrapper<T>>(bodyJson.GetRawText(), JsonOptions);
+                        data = wrapper?.Data;
+                    }
+                    catch (JsonException ex)
+                    {
+                        _logger.LogWarning(ex, "API POST {Path} 响应解析失败", path);
+                        return new ApiCallResult<T>(false, status, null, "RESPONSE_PARSE_ERROR", "响应解析失败", bodyJson);
+                    }
+                }
+                return new ApiCallResult<T>(true, status, data, null, null, bodyJson);
+            }
+            return new ApiCallResult<T>(false, status, null, errCode, errText, bodyJson);
+        }
+    }
+
+    /// <summary>
+    /// 从错误 body 提取指定字段：优先顶层，其次嵌套 "extensions" 子对象（ProblemDetails.Extensions 序列化名取决于 .NET 版本，两边兼容）
+    /// </summary>
+    private static string? GetExtFromBody(JsonElement el, string key)
+    {
+        if (el.ValueKind != JsonValueKind.Object) return null;
+        if (el.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.String) return v.GetString();
+        if (el.TryGetProperty("extensions", out var ext) && ext.ValueKind == JsonValueKind.Object
+            && ext.TryGetProperty(key, out var ev) && ev.ValueKind == JsonValueKind.String) return ev.GetString();
+        return null;
+    }
+    /// <summary>
     /// 获取分页数据（公开接口）
     /// </summary>
     public async Task<PagedResult<T>?> GetPagedAsync<T>(string path, CancellationToken ct = default) where T : class
@@ -270,6 +336,21 @@ public class ApiClient
     /// 标准 API 响应包装结构
     /// </summary>
     private record ApiResponseWrapper<T>(bool Success, int Code, T? Data, string? Message) where T : class;
+
+    /// <summary>
+    /// 带错误透传的调用结果：成功含 Data，失败含 StatusCode/ErrorCode/ErrorText 及原始 ErrorBody
+    /// </summary>
+    public sealed record ApiCallResult<T>(
+        bool Success,
+        int StatusCode,
+        T? Data,
+        string? ErrorCode,
+        string? ErrorText,
+        JsonElement ErrorBody) where T : class
+    {
+        /// <summary>读取错误 body 的扩展字段（顶层或嵌套 extensions）</summary>
+        public string? GetExtension(string key) => GetExtFromBody(ErrorBody, key);
+    }
 
     /// <summary>
     /// 分页数据结构
