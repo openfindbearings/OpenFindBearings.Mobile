@@ -60,7 +60,9 @@ public static class ConfigEndpoints
         string CustomerService,
         string AppVersion,
         string DownloadUrl,
-        bool ForceUpdate);
+        bool ForceUpdate,
+        // 改动说明：新增媒体源 base，透传 API 的 Mobile.MediaBaseUrl 供前端 getMediaBase 运行时覆盖
+        string MediaBaseUrl);
 
     /// <summary>版本检查结果（与 API VersionCheckResult 对应）</summary>
     public record VersionCheckDto(

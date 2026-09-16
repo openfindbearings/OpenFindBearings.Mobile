@@ -232,25 +232,6 @@ public class ApiClient
     }
 
     /// <summary>
-    /// 拉取原始响应（媒体代理用：API 无公网 ingress，图片流经 BFF 转发）。
-    /// 失败或非 2xx 返回 null。
-    /// </summary>
-    public async Task<HttpResponseMessage?> GetRawAsync(string path, CancellationToken ct = default)
-    {
-        try
-        {
-            var client = _httpClientFactory.CreateClient("Api");
-            var response = await client.GetAsync(path, HttpCompletionOption.ResponseHeadersRead, ct);
-            return response.IsSuccessStatusCode ? response : null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "API GET(raw) {Path} 失败", path);
-            return null;
-        }
-    }
-
-    /// <summary>
     /// 上传文件（multipart/form-data 转发到 API，带用户 JWT）。
     /// 改动说明：头像上传需要透传 IFormFile，普通 JSON 方法不适用；
     /// 返回 API 的 data（{url} 相对路径），由调用方拼公网主机名。
