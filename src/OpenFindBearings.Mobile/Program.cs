@@ -137,8 +137,8 @@ mobile.MapGroup("/merchant").MapMerchantManageEndpoints();
 mobile.MapProfileEndpoints();
 // /mobile/me/*：收藏/关注/历史/资料编辑写操作代理（用户 token 透传）
 mobile.MapGroup("/me").MapMeEndpoints();
-// 改动说明：媒体代理（图片经 BFF 转发给无公网 ingress 的 API），注册在 /mobile/media 下，匿名可访问
-mobile.MapGroup("/media").MapMediaEndpoints();
+// 改动说明：媒体（图片/上传文件）改由独立 nginx 媒体服务在 /media 直出（见 OpenFindBearings.Api
+// deploy/k3s/media-server.yml），BFF 不再逐字节代理图片，故删除 /mobile/media 转发端点
 // 认证组附加 IP 限流策略（防暴力破解登录/注册/刷新）
 var authGroup = mobile.MapGroup("/auth");
 authGroup.MapAuthEndpoints();

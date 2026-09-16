@@ -180,8 +180,9 @@ public static class MerchantManageEndpoints
         .RequireAuthorization();
 
         /// <summary>
-        /// 上传商户 Logo：透传 multipart 到 API 落盘，返回经 BFF 媒体代理的绝对 URL（同头像规范）。
-        /// 改动说明：仅返回 URL，实际写入 DB 由维护页保存 profile 时带 logoUrl 完成。
+        /// 上传商户 Logo：透传 multipart 到 API 落盘，原样返回相对媒体键 /uploads/merchants/logo/...
+        /// 改动说明：与头像一致——相对键入库，host 由前端拼独立媒体源，不再由 BFF 拼绝对 URL。
+        /// 仅返回 URL，实际写入 DB 由维护页保存 profile 时带 logoUrl 完成。
         /// </summary>
         group.MapPost("/logo", async (
             IFormFile file,
@@ -200,7 +201,7 @@ public static class MerchantManageEndpoints
             if (data?.Url == null)
                 return Results.Ok(new { success = false, message = "上传失败（可能无管理员权限）" });
 
-            return Results.Ok(new { success = true, url = MeEndpoints.PublicUrl(http, data.Url) });
+            return Results.Ok(new { success = true, url = data.Url });
         })
         .WithName("UploadMerchantLogo")
         .WithSummary("上传商户Logo")

@@ -224,8 +224,9 @@ public static class MeEndpoints
 
         /// <summary>
         /// 上传头像：透传 multipart 到 API /api/me/avatar 落盘，
-        /// 返回可公网访问的绝对 URL（经 BFF 媒体代理 /mobile/media/ 前缀，
-        /// API 无公网 ingress，图片必须走 BFF 转发；主机名从 X-Forwarded 头推导）。
+        /// 原样返回 API 落库的相对媒体键（/uploads/avatars/{file}）。
+        /// 改动说明：媒体 URL 一律相对入库、host 由前端拼独立媒体源（详见 config.ts.getMediaBase），
+        /// 不再由 BFF 拼绝对 URL——避免 host 焊死在库里、日后换域名/切对象存储全炸。
         /// </summary>
         group.MapPost("/avatar", async (
             IFormFile file, HttpContext http, ApiClient api, CancellationToken ct) =>
@@ -241,7 +242,7 @@ public static class MeEndpoints
             if (data?.Url == null)
                 return Results.Ok(new { success = false, message = "上传失败" });
 
-            return Results.Ok(new { success = true, url = PublicUrl(http, data.Url) });
+            return Results.Ok(new { success = true, url = data.Url });
         })
         .WithName("UploadAvatar")
         .WithSummary("上传头像");
@@ -266,15 +267,6 @@ public static class MeEndpoints
     /// 改动说明：Ingress 终结 TLS 后转发到容器是 http + 集群内 Host，
     /// 必须优先取 traefik 注入的 X-Forwarded-Proto/Host 才能得到 https://bff.515813.xyz。
     /// </summary>
-    internal static string PublicUrl(HttpContext http, string relativePath)
-    {
-        var proto = http.Request.Headers["X-Forwarded-Proto"].FirstOrDefault() ?? http.Request.Scheme;
-        var host = http.Request.Headers["X-Forwarded-Host"].FirstOrDefault()
-                   ?? http.Request.Host.Host
-                   + (http.Request.Host.Port.HasValue ? $":{http.Request.Host.Port}" : "");
-        return $"{proto}://{host}{relativePath}";
-    }
-
     /// <summary>API 头像上传响应 {url}</summary>
     public record AvatarUrlResult(string? Url);
 
