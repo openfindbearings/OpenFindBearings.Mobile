@@ -134,6 +134,8 @@ mobile.MapConfigEndpoints();
 mobile.MapGroup("/bearings").MapBearingEndpoints();
 mobile.MapGroup("/merchants").MapMerchantEndpoints();
 mobile.MapGroup("/merchant").MapMerchantManageEndpoints();
+// 改动说明：站内信代理组（消息中心与 TabBar 角标）
+mobile.MapGroup("/notifications").MapNotificationEndpoints();
 mobile.MapProfileEndpoints();
 // /mobile/me/*：收藏/关注/历史/资料编辑写操作代理（用户 token 透传）
 mobile.MapGroup("/me").MapMeEndpoints();
