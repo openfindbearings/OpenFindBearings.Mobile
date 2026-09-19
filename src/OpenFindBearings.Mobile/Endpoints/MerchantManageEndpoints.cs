@@ -118,6 +118,8 @@ public static class MerchantManageEndpoints
         .WithName("ImportMerchantInventory")
         .WithSummary("Excel 批量导入在售商品")
         .WithDescription("上传 Excel 批量导入在售商品（需商户管理员权限）")
+        // 改动说明（v1.6.2）：IFormFile 绑定自动附加 anti-forgery 元数据，BFF 无 UseAntiforgery 中间件即 500——纯 Bearer API 显式关闭
+        .DisableAntiforgery()
         .RequireAuthorization();
 
         /// <summary>
@@ -147,6 +149,7 @@ public static class MerchantManageEndpoints
         .WithName("UploadMerchantDocument")
         .WithSummary("上传证照材料")
         .WithDescription("商户按类型上传证照材料（执照/授权书/厂房照）进入审核队列，需登录且为商户成员")
+        .DisableAntiforgery()
         .RequireAuthorization();
 
         /// <summary>
@@ -193,6 +196,7 @@ public static class MerchantManageEndpoints
         .WithName("UploadDocumentFile")
         .WithSummary("材料文件预上传")
         .WithDescription("上传材料文件返回 URL（不建审核记录），需登录")
+        .DisableAntiforgery()
         .RequireAuthorization();
 
         /// <summary>
@@ -260,6 +264,7 @@ public static class MerchantManageEndpoints
         .WithName("UploadMerchantLogo")
         .WithSummary("上传商户Logo")
         .WithDescription("上传商户 Logo 图片，返回可访问 URL（需商户管理员权限，保存资料时落库）")
+        .DisableAntiforgery()
         .RequireAuthorization();
     }
 
