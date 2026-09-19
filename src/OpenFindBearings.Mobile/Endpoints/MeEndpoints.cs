@@ -245,6 +245,9 @@ public static class MeEndpoints
             return Results.Ok(new { success = true, url = data.Url });
         })
         .WithName("UploadAvatar")
+        // 改动说明（v1.6.2）：同商户管理上传端点——IFormFile 绑定自动附加 anti-forgery 元数据，
+        //   BFF 未配 UseAntiforgery 中间件会直接 500，纯 Bearer API 显式关闭
+        .DisableAntiforgery()
         .WithSummary("上传头像");
     }
 
