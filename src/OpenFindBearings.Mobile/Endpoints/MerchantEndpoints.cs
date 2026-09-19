@@ -416,7 +416,7 @@ public static class MerchantEndpoints
     }
 
     /// <summary>
-    /// 入驻申请请求体（对齐 API ApplyMerchantRequest）
+    /// 入驻申请请求体（对齐 API ApplyMerchantRequest；v1.6.0 LicenseUrl 泛化为 Documents 材料集合）
     /// </summary>
     public record ApplyRequest(
         string? Mode = "self",
@@ -431,7 +431,12 @@ public static class MerchantEndpoints
         string? CompanyName = null,
         string? UnifiedSocialCreditCode = null,
         string? Description = null,
-        string? LicenseUrl = null);
+        IReadOnlyList<DocumentInput>? Documents = null);
+
+    /// <summary>
+    /// 随单证照材料项（v1.6.0 对齐 API DocumentSubmission：type 1 执照 / 2 授权书 / 3 厂房照）
+    /// </summary>
+    public record DocumentInput(int Type, string FileUrl);
 
     /// <summary>
     /// 入驻申请成功响应 data（对齐 API /api/merchant/apply 的 {merchantId, message}）
@@ -456,7 +461,7 @@ public static class MerchantEndpoints
         Guid? TargetMerchantId = null);
 
     /// <summary>
-    /// 接受提名请求体（对齐 API AcceptNominationRequest）
+    /// 接受提名请求体（对齐 API AcceptNominationRequest；v1.6.0 LicenseUrl 泛化为 Documents）
     /// </summary>
     public record AcceptNominationRequest(
         string? ContactPerson = null,
@@ -467,10 +472,10 @@ public static class MerchantEndpoints
         string? CompanyName = null,
         string? UnifiedSocialCreditCode = null,
         string? Description = null,
-        string? LicenseUrl = null);
+        IReadOnlyList<DocumentInput>? Documents = null);
 
     /// <summary>
-    /// 被拒重提请求体（对齐 API ResubmitApplicationRequest，v1.5.0 新增）
+    /// 被拒重提请求体（对齐 API ResubmitApplicationRequest，v1.5.0 新增；v1.6.0 LicenseUrl 泛化为 Documents）
     /// </summary>
     public record ResubmitRequest(
         string? Name = null,
@@ -483,17 +488,24 @@ public static class MerchantEndpoints
         string? CompanyName = null,
         string? UnifiedSocialCreditCode = null,
         string? Description = null,
-        string? LicenseUrl = null);
+        IReadOnlyList<DocumentInput>? Documents = null);
 
     /// <summary>
-    /// 入驻申请详情项（对齐 API MerchantApplicationDetailDto，v1.5.0 新增）
+    /// 入驻申请详情项（对齐 API MerchantApplicationDetailDto，v1.5.0 新增；v1.6.0 补材料清单）
     /// </summary>
     public record ApplicationDetailItem(
         Guid MerchantId, string MerchantName, string Status,
         string? RejectReason, string ApplicationMode, string Role, int Type,
         string? CompanyName, string? UnifiedSocialCreditCode,
         string? ContactPerson, string? Phone, string? Mobile, string? Email, string? Address,
-        string? Description, string? LogoUrl);
+        string? Description, string? LogoUrl,
+        IReadOnlyList<ApplicationDocumentItem>? Documents = null);
+
+    /// <summary>
+    /// 申请随单材料项（对齐 API ApplicationDocumentDto，v1.6.0 新增）
+    /// </summary>
+    public record ApplicationDocumentItem(
+        int Type, string TypeName, string FileUrl, string Status, string? ReviewComment);
 
     // ============ DTO ============
 

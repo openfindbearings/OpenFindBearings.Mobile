@@ -236,7 +236,7 @@ public class ApiClient
     /// 改动说明：头像上传需要透传 IFormFile，普通 JSON 方法不适用；
     /// 返回 API 的 data（{url} 相对路径），由调用方拼公网主机名。
     /// </summary>
-    public async Task<T?> UploadAsync<T>(string path, Stream fileStream, string fileName, string contentType, string accessToken, CancellationToken ct = default) where T : class
+    public async Task<T?> UploadAsync<T>(string path, Stream fileStream, string fileName, string contentType, string accessToken, CancellationToken ct = default, IReadOnlyDictionary<string, string>? extraFields = null) where T : class
     {
         try
         {
@@ -245,6 +245,14 @@ public class ApiClient
             var streamContent = new StreamContent(fileStream);
             streamContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
             content.Add(streamContent, "file", fileName);
+            // 改动说明（v1.6.0）：支持随 multipart 附带普通字段（证照材料上传的 type 参数），置于 ct 之后保持旧调用点兼容
+            if (extraFields != null)
+            {
+                foreach (var (key, value) in extraFields)
+                {
+                    content.Add(new StringContent(value), key);
+                }
+            }
             var response = await client.PostAsync(path, content, ct);
             response.EnsureSuccessStatusCode();
             var wrapper = await response.Content.ReadFromJsonAsync<ApiResponseWrapper<T>>(JsonOptions, ct);

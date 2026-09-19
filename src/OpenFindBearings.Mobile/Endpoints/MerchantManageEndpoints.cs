@@ -1,10 +1,12 @@
+using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
 using OpenFindBearings.Mobile.Services;
 
 namespace OpenFindBearings.Mobile.Endpoints;
 
 /// <summary>
 /// 商户管理代理端点（/mobile/merchant/*）
-/// 代理 API /api/merchant/* 的自家轴承管理（列表/添加/上下架/Excel 导入）
+/// 代理 API /api/merchant/* 的自家轴承管理（列表/添加/上下架/Excel 导入/证照材料上传 v1.6.0）
 /// 统一模式：从入站 Authorization 头取用户 access token 透传；缺 token 一律 401
 /// </summary>
 public static class MerchantManageEndpoints
@@ -119,10 +121,12 @@ public static class MerchantManageEndpoints
         .RequireAuthorization();
 
         /// <summary>
-        /// 上传营业执照（店铺认证，需登录且为商户成员）
+        /// 上传证照材料（v1.6.0 由"上传营业执照"泛化：type 1 执照 / 2 授权书 / 3 厂房照；
+        /// 入驻后换证/补材料通道，绑定 X-Merchant-Id 当前商户，需登录且为商户成员）
         /// </summary>
-        group.MapPost("/license", async (
+        group.MapPost("/documents", async (
             IFormFile file,
+            [FromForm] int type,
             ApiClient api,
             HttpContext http,
             CancellationToken ct) =>
@@ -133,12 +137,62 @@ public static class MerchantManageEndpoints
                 return Results.BadRequest(new { success = false, message = "请选择文件" });
 
             var result = await api.UploadAsync<object>(
-                "/api/merchant/license", file.OpenReadStream(), file.FileName, file.ContentType, token, ct);
-            return Results.Ok(new { success = true, message = "营业执照已提交，等待审核" });
+                "/api/merchant/documents", file.OpenReadStream(), file.FileName, file.ContentType, token, ct,
+                new Dictionary<string, string> { ["type"] = type.ToString() });
+            // 改动说明：上游错误不再虚假成功——UploadAsync 吞错返回 null 时透出失败
+            return result is null
+                ? Results.Json(new { success = false, message = "材料提交失败（类型无效或已有待审执照）" }, statusCode: 502)
+                : Results.Ok(new { success = true, message = "材料已提交，等待审核" });
         })
-        .WithName("UploadMerchantLicense")
-        .WithSummary("上传营业执照")
-        .WithDescription("商户上传/更新营业执照照片用于认证，需登录且为商户成员")
+        .WithName("UploadMerchantDocument")
+        .WithSummary("上传证照材料")
+        .WithDescription("商户按类型上传证照材料（执照/授权书/厂房照）进入审核队列，需登录且为商户成员")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 当前商户证照材料列表（信息维护页材料区，v1.6.0 新增，X-Merchant-Id 上下文）
+        /// </summary>
+        group.MapGet("/documents", async (
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var result = await api.GetAsync<List<JsonElement>>("/api/merchant/documents", token, ct);
+            return Results.Ok(result ?? []);
+        })
+        .WithName("GetMyMerchantDocuments")
+        .WithSummary("获取当前商户证照材料")
+        .WithDescription("返回当前商户上下文的证照材料与审核状态")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 材料文件预上传（v1.6.0 新增）：只传文件返回 URL，供入驻申请"随单材料"先传后提交
+        /// </summary>
+        group.MapPost("/documents/upload", async (
+            IFormFile file,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            if (file == null || file.Length == 0)
+                return Results.BadRequest(new { success = false, message = "请选择文件" });
+
+            using var ms = new MemoryStream();
+            await file.OpenReadStream().CopyToAsync(ms, ct);
+            ms.Position = 0;
+            var data = await api.UploadAsync<DocumentUrlResult>(
+                "/api/merchant/documents/upload", ms, file.FileName, file.ContentType ?? "image/jpeg", token, ct);
+            return data?.Url is null
+                ? Results.Ok(new { success = false, message = "上传失败" })
+                : Results.Ok(new { success = true, url = data.Url });
+        })
+        .WithName("UploadDocumentFile")
+        .WithSummary("材料文件预上传")
+        .WithDescription("上传材料文件返回 URL（不建审核记录），需登录")
         .RequireAuthorization();
 
         /// <summary>
@@ -257,4 +311,9 @@ public static class MerchantManageEndpoints
 
     /// <summary>API Logo 上传响应 {url}</summary>
     public record LogoUrlResult(string? Url);
+
+    /// <summary>
+    /// 材料预上传返回（v1.6.0 对齐 API /api/merchant/documents/upload 的 {url}）
+    /// </summary>
+    public record DocumentUrlResult(string? Url);
 }
