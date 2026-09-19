@@ -135,8 +135,13 @@ public static class MerchantEndpoints
             var token = GetToken(http);
             if (string.IsNullOrEmpty(token))
                 return Results.Unauthorized();
-            var ok = await api.PostVoidAsync($"/api/merchant/{merchantId}/withdraw", token, ct);
-            return Results.Ok(new { success = ok, message = ok ? "入驻申请已撤回" : "撤回失败" });
+            // 改动说明（v1.6.1）：PostVoidAsync 吞掉上游 400 原因（"仅 Pending 可撤回/渠道不支持"等
+            //   全被压成干巴巴的"撤回失败"）——改用 PostWithResultAsync 按状态码与 detail 文案透传
+            var result = await api.PostWithResultAsync<object>($"/api/merchant/{merchantId}/withdraw", null, token, ct);
+            if (result.Success)
+                return Results.Ok(new { success = true, message = "入驻申请已撤回" });
+            return Results.Json(new { success = false, message = result.ErrorText ?? "撤回失败" },
+                statusCode: result.StatusCode > 0 ? result.StatusCode : 502);
         })
         .WithName("WithdrawMerchantApplication")
         .WithSummary("撤回入驻申请")
@@ -206,8 +211,12 @@ public static class MerchantEndpoints
             var token = GetToken(http);
             if (string.IsNullOrEmpty(token))
                 return Results.Unauthorized();
-            var ok = await api.PostVoidAsync($"/api/merchant/{merchantId}/delete-application", token, ct);
-            return Results.Ok(new { success = ok, message = ok ? "被驳回的申请已删除" : "删除失败" });
+            // 改动说明（v1.6.1）：同 withdraw，透传"仅被驳回可删除/无权删除/渠道不支持"等真实原因
+            var result = await api.PostWithResultAsync<object>($"/api/merchant/{merchantId}/delete-application", null, token, ct);
+            if (result.Success)
+                return Results.Ok(new { success = true, message = "被驳回的申请已删除" });
+            return Results.Json(new { success = false, message = result.ErrorText ?? "删除失败" },
+                statusCode: result.StatusCode > 0 ? result.StatusCode : 502);
         })
         .WithName("DeleteMerchantApplication")
         .WithSummary("删除被驳回的入驻申请")
