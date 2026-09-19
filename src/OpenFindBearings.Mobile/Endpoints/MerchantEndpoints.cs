@@ -144,6 +144,77 @@ public static class MerchantEndpoints
         .RequireAuthorization();
 
         /// <summary>
+        /// 查询单个入驻申请详情（被拒重提预填，需登录，v1.5.0 新增）
+        /// </summary>
+        group.MapGet("/{merchantId:guid}/application", async (
+            Guid merchantId,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token))
+                return Results.Unauthorized();
+
+            var result = await api.GetAsync<ApplicationDetailItem>($"/api/merchant/{merchantId}/application", token, ct);
+            return result is null ? Results.NotFound() : Results.Ok(result);
+        })
+        .WithName("GetMerchantApplicationDetail")
+        .WithSummary("查询入驻申请详情")
+        .WithDescription("申请人查看自己某张入驻申请的全量资料（重提预填），需登录")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 被拒后修改资料重新提交（需登录，v1.5.0 新增）
+        /// </summary>
+        group.MapPost("/{merchantId:guid}/resubmit", async (
+            Guid merchantId,
+            ResubmitRequest body,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token))
+                return Results.Unauthorized();
+
+            // 重提失败（状态已变/名称撞他人/必填缺失）沿用上游状态码与文案透传，前端 Toast 展示
+            var result = await api.PostWithResultAsync<ApplyResultData>($"/api/merchant/{merchantId}/resubmit", body, token, ct);
+            if (result.Success)
+                return Results.Ok(new { message = result.Data?.Message ?? "修改后的申请已重新提交，等待审核" });
+
+            return Results.Json(new
+            {
+                success = false,
+                message = result.ErrorText ?? "重新提交失败，请稍后重试"
+            }, statusCode: result.StatusCode > 0 ? result.StatusCode : 502);
+        })
+        .WithName("ResubmitMerchantApplication")
+        .WithSummary("重新提交被拒的入驻申请")
+        .WithDescription("申请人修改资料后重新提交被驳回的入驻申请，需登录")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 删除被驳回的入驻申请（需登录，v1.5.0 新增）
+        /// </summary>
+        group.MapPost("/{merchantId:guid}/delete-application", async (
+            Guid merchantId,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token))
+                return Results.Unauthorized();
+            var ok = await api.PostVoidAsync($"/api/merchant/{merchantId}/delete-application", token, ct);
+            return Results.Ok(new { success = ok, message = ok ? "被驳回的申请已删除" : "删除失败" });
+        })
+        .WithName("DeleteMerchantApplication")
+        .WithSummary("删除被驳回的入驻申请")
+        .WithDescription("申请人删除自己被驳回的入驻申请（新建硬删/认领退回公共池），需登录")
+        .RequireAuthorization();
+
+        /// <summary>
         /// 认领搜索爬虫商家（需登录）
         /// </summary>
         group.MapGet("/claimable", async (
@@ -345,7 +416,7 @@ public static class MerchantEndpoints
     }
 
     /// <summary>
-    /// 入驻申请请求体（对齐 API ApplyMerchantRequest）
+    /// 入驻申请请求体（对齐 API ApplyMerchantRequest；v1.6.0 LicenseUrl 泛化为 Documents 材料集合）
     /// </summary>
     public record ApplyRequest(
         string? Mode = "self",
@@ -360,7 +431,12 @@ public static class MerchantEndpoints
         string? CompanyName = null,
         string? UnifiedSocialCreditCode = null,
         string? Description = null,
-        string? LicenseUrl = null);
+        IReadOnlyList<DocumentInput>? Documents = null);
+
+    /// <summary>
+    /// 随单证照材料项（v1.6.0 对齐 API DocumentSubmission：type 1 执照 / 2 授权书 / 3 厂房照）
+    /// </summary>
+    public record DocumentInput(int Type, string FileUrl);
 
     /// <summary>
     /// 入驻申请成功响应 data（对齐 API /api/merchant/apply 的 {merchantId, message}）
@@ -385,7 +461,7 @@ public static class MerchantEndpoints
         Guid? TargetMerchantId = null);
 
     /// <summary>
-    /// 接受提名请求体（对齐 API AcceptNominationRequest）
+    /// 接受提名请求体（对齐 API AcceptNominationRequest；v1.6.0 LicenseUrl 泛化为 Documents）
     /// </summary>
     public record AcceptNominationRequest(
         string? ContactPerson = null,
@@ -396,7 +472,40 @@ public static class MerchantEndpoints
         string? CompanyName = null,
         string? UnifiedSocialCreditCode = null,
         string? Description = null,
-        string? LicenseUrl = null);
+        IReadOnlyList<DocumentInput>? Documents = null);
+
+    /// <summary>
+    /// 被拒重提请求体（对齐 API ResubmitApplicationRequest，v1.5.0 新增；v1.6.0 LicenseUrl 泛化为 Documents）
+    /// </summary>
+    public record ResubmitRequest(
+        string? Name = null,
+        int? Type = null,
+        string? ContactPerson = null,
+        string? Phone = null,
+        string? Mobile = null,
+        string? Email = null,
+        string? Address = null,
+        string? CompanyName = null,
+        string? UnifiedSocialCreditCode = null,
+        string? Description = null,
+        IReadOnlyList<DocumentInput>? Documents = null);
+
+    /// <summary>
+    /// 入驻申请详情项（对齐 API MerchantApplicationDetailDto，v1.5.0 新增；v1.6.0 补材料清单）
+    /// </summary>
+    public record ApplicationDetailItem(
+        Guid MerchantId, string MerchantName, string Status,
+        string? RejectReason, string ApplicationMode, string Role, int Type,
+        string? CompanyName, string? UnifiedSocialCreditCode,
+        string? ContactPerson, string? Phone, string? Mobile, string? Email, string? Address,
+        string? Description, string? LogoUrl,
+        IReadOnlyList<ApplicationDocumentItem>? Documents = null);
+
+    /// <summary>
+    /// 申请随单材料项（对齐 API ApplicationDocumentDto，v1.6.0 新增）
+    /// </summary>
+    public record ApplicationDocumentItem(
+        int Type, string TypeName, string FileUrl, string Status, string? ReviewComment);
 
     // ============ DTO ============
 
