@@ -281,17 +281,23 @@ public class ApiClient
     /// <summary>上传类上游错误：Message 为可直接展示给用户的真实失败原因（API Problem detail 透传）</summary>
     public sealed class UpstreamUploadException(string message) : Exception(message);
 
-    /// <summary>从 ProblemDetails JSON 里提取 detail（缺省退 title），解析失败返回 null</summary>
+    /// <summary>从错误响应 JSON 里提取可展示文案：兼容 ProblemDetails（detail/title）与 API 统一响应（message），解析失败返回 null</summary>
     private static string? ExtractProblemDetail(string body)
     {
         try
         {
             using var doc = JsonDocument.Parse(body);
             var root = doc.RootElement;
-            if (root.TryGetProperty("detail", out var d) && d.ValueKind == JsonValueKind.String)
-                return d.GetString();
-            if (root.TryGetProperty("title", out var t) && t.ValueKind == JsonValueKind.String)
-                return t.GetString();
+            // 改动说明（v1.6.2）：API 的 BadRequest 走 ApiResponse 统一格式（message 字段），
+            // 不是 ProblemDetails（detail/title），三种字段都尝试提取，否则真实原因又被吞成状态码
+            foreach (var prop in new[] { "detail", "message", "title" })
+            {
+                if (root.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.String)
+                {
+                    var s = v.GetString();
+                    if (!string.IsNullOrWhiteSpace(s)) return s;
+                }
+            }
         }
         catch (JsonException) { /* 非 JSON 响应按 null 处理 */ }
         return null;
