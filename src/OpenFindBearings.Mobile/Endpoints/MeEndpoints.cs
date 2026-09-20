@@ -237,12 +237,20 @@ public static class MeEndpoints
                 return Results.Ok(new { success = false, message = "请选择图片" });
 
             using var stream = file.OpenReadStream();
-            var data = await api.UploadAsync<AvatarUrlResult>(
-                "/api/me/avatar", stream, file.FileName, file.ContentType ?? "image/jpeg", token, ct);
-            if (data?.Url == null)
-                return Results.Ok(new { success = false, message = "上传失败" });
+            // 改动说明（v1.6.2）：透传上游真实失败原因（UploadAsync 非 2xx 抛 UpstreamUploadException）
+            try
+            {
+                var data = await api.UploadAsync<AvatarUrlResult>(
+                    "/api/me/avatar", stream, file.FileName, file.ContentType ?? "image/jpeg", token, ct);
+                if (data?.Url == null)
+                    return Results.Ok(new { success = false, message = "上传失败" });
 
-            return Results.Ok(new { success = true, url = data.Url });
+                return Results.Ok(new { success = true, url = data.Url });
+            }
+            catch (ApiClient.UpstreamUploadException ex)
+            {
+                return Results.Ok(new { success = false, message = ex.Message });
+            }
         })
         .WithName("UploadAvatar")
         // 改动说明（v1.6.2）：同商户管理上传端点——IFormFile 绑定自动附加 anti-forgery 元数据，
