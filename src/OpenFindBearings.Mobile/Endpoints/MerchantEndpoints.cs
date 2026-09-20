@@ -149,6 +149,30 @@ public static class MerchantEndpoints
         .RequireAuthorization();
 
         /// <summary>
+        /// 商户申请认证（v1.6.3 新增代理，管理员；透传 API POST /api/merchant/{id}/verify-request，
+        /// 材料不齐时按 400 detail 透传缺项引导文案）
+        /// </summary>
+        group.MapPost("/{merchantId:guid}/verify-request", async (
+            Guid merchantId,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token))
+                return Results.Unauthorized();
+            var result = await api.PostWithResultAsync<object>($"/api/merchant/{merchantId}/verify-request", null, token, ct);
+            if (result.Success)
+                return Results.Ok(new { success = true, message = "认证申请已提交，平台将优先审核" });
+            return Results.Json(new { success = false, message = result.ErrorText ?? "申请失败" },
+                statusCode: result.StatusCode > 0 ? result.StatusCode : 502);
+        })
+        .WithName("RequestMerchantVerify")
+        .WithSummary("申请商家认证")
+        .WithDescription("商户管理员主动申请认证（需必备材料全部审核通过），需登录")
+        .RequireAuthorization();
+
+        /// <summary>
         /// 查询单个入驻申请详情（被拒重提预填，需登录，v1.5.0 新增）
         /// </summary>
         group.MapGet("/{merchantId:guid}/application", async (
@@ -331,6 +355,51 @@ public static class MerchantEndpoints
         .WithName("GetMerchantStaff")
         .WithSummary("获取商户成员列表")
         .WithDescription("获取当前商户成员列表（含角色与状态），需登录且为商户成员")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 添加成员（v1.6.3 新增代理，管理员；透传 API POST /api/merchant/staff——
+        /// 按手机号/邮箱查注册用户，未注册 400 文案透传）
+        /// </summary>
+        group.MapPost("/staff", async (
+            AddStaffRequest body,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token))
+                return Results.Unauthorized();
+            var result = await api.PostWithResultAsync<object>("/api/merchant/staff", body, token, ct);
+            if (result.Success)
+                return Results.Ok(new { success = true, message = "成员已添加" });
+            return Results.Json(new { success = false, message = result.ErrorText ?? "添加失败" },
+                statusCode: result.StatusCode > 0 ? result.StatusCode : 502);
+        })
+        .WithName("AddMerchantStaff")
+        .WithSummary("添加商户成员")
+        .WithDescription("管理员按手机号/邮箱添加已注册用户为成员")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 移除成员（v1.6.3 新增代理，管理员；透传 API DELETE /api/merchant/staff/{userId}）
+        /// </summary>
+        group.MapDelete("/staff/{userId}", async (
+            string userId,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token))
+                return Results.Unauthorized();
+
+            var ok = await api.DeleteVoidAsync($"/api/merchant/staff/{userId}", token, ct);
+            return Results.Ok(new { success = ok, message = ok ? "成员已移除" : "移除失败（权限不足或成员不存在）" });
+        })
+        .WithName("RemoveMerchantStaff")
+        .WithSummary("移除商户成员")
+        .WithDescription("从当前商户移除成员（需商户管理员权限）")
         .RequireAuthorization();
 
         /// <summary>
@@ -537,10 +606,11 @@ public static class MerchantEndpoints
 
     /// <summary>
     /// 入驻状态项（对齐 API MerchantApplicationDto）
+    /// 改动说明（v1.6.3）：加 VerifyRequested 透传（Taro"申请认证"按钮态）
     /// </summary>
     public record MerchantApplicationItem(
         Guid MerchantId, string MerchantName, string Status,
-        string? RejectReason, string Role, bool IsVerified, string? LogoUrl);
+        string? RejectReason, string Role, bool IsVerified, string? LogoUrl, bool VerifyRequested);
 
     /// <summary>
     /// 可认领爬虫商家项（对齐 API ClaimableMerchantDto）
@@ -559,13 +629,20 @@ public static class MerchantEndpoints
 
     /// <summary>
     /// 商户成员项（对齐 API MerchantStaffDto）
+    /// 改动说明（v1.6.3）：加 IsSelf——Taro 登录态 id 是 Identity sub 与成员 UserId 不同源，
+    ///   前端无法自判本人行，由 API 权威标记透传
     /// </summary>
-    public record MerchantStaffItem(Guid Id, string Nickname, string? Avatar, string? Role, string Status);
+    public record MerchantStaffItem(Guid Id, string Nickname, string? Avatar, string? Role, string Status, bool IsSelf);
 
     /// <summary>
     /// 变更成员角色请求体
     /// </summary>
     public record ChangeMemberRoleRequest(string Role);
+
+    /// <summary>
+    /// 添加成员请求体（对齐 API AddStaffCommand：手机号/邮箱二选一 + 角色）
+    /// </summary>
+    public record AddStaffRequest(string? Phone, string? Email, string? Role);
 
     // ============ 工具 ============
 
