@@ -60,6 +60,26 @@ public static class MerchantManageEndpoints
         .RequireAuthorization();
 
         /// <summary>
+        /// 编辑在售商品（v1.6.3 新增代理）：改价格/库存/起订量描述与备注，透传 API PUT /api/merchant/bearings/{id}
+        /// </summary>
+        group.MapPut("/bearings/{id}", async (
+            Guid id,
+            UpdateBearingRequest body,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var ok = await api.PutVoidAsync($"/api/merchant/bearings/{id}", body, token, ct);
+            return Results.Ok(new { success = ok, message = ok ? "更新成功，等待审核" : "更新失败" });
+        })
+        .WithName("UpdateMerchantBearing")
+        .WithSummary("编辑在售商品")
+        .WithDescription("更新当前商户在售商品的价格/库存等描述信息，需登录且为商户成员")
+        .RequireAuthorization();
+
+        /// <summary>
         /// 上架在售商品
         /// </summary>
         group.MapPost("/bearings/{id}/onshelf", async (
@@ -311,22 +331,38 @@ public static class MerchantManageEndpoints
 
     /// <summary>
     /// 添加在售商品请求体
+    /// 改动说明（v1.6.3 断链修复）：原字段 (BearingPartNumber, Price, Stock, MinOrder) 与 API
+    ///   CreateMerchantBearingCommand(BearingId, PriceDescription, StockDescription, MinOrderDescription)
+    ///   完全对不上——透传后 BearingId 恒空必失败。对齐为 BearingId（Taro 端改为搜索选平台已有型号）
     /// </summary>
     public record CreateBearingRequest(
-        string BearingPartNumber,
-        string? Price,
-        string? Stock,
-        string? MinOrder,
+        Guid BearingId,
+        string? PriceDescription,
+        string? StockDescription,
+        string? MinOrderDescription,
+        string? Remarks);
+
+    /// <summary>
+    /// 编辑在售商品请求体（对齐 API UpdateMerchantBearingCommand 可编辑字段，v1.6.3 新增）
+    /// </summary>
+    public record UpdateBearingRequest(
+        string? PriceDescription,
+        string? StockDescription,
+        string? MinOrderDescription,
         string? Remarks);
 
     /// <summary>
     /// 自家在售商品项（对齐 API MerchantBearing 列表字段）
+    /// 改动说明（v1.6.3）：补 Id（关联主键，编辑/上下架用）与四项描述（编辑表单回填）
+    ///   及 IsPendingApproval（审核中角标）——原裁剪过甚，编辑页无数据可回显
     /// </summary>
     public record MyMerchantBearingItem(
-        Guid BearingId, string BearingPartNumber, string? OldNumber,
+        Guid Id, Guid BearingId, string BearingPartNumber, string? OldNumber,
         string? BearingTypeName, string? BrandName,
         decimal? InnerDiameter, decimal? OuterDiameter, decimal? Width,
-        string? Price, bool IsOnSale);
+        string? Price, bool IsOnSale,
+        string? PriceDescription, string? StockDescription, string? MinOrderDescription,
+        string? Remarks, bool IsPendingApproval);
 
     /// <summary>
     /// 商户资料（对齐 API MerchantDetailDto 中维护页所需字段）
