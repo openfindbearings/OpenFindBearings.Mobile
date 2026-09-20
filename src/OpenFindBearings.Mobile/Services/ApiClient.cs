@@ -238,31 +238,63 @@ public class ApiClient
     /// </summary>
     public async Task<T?> UploadAsync<T>(string path, Stream fileStream, string fileName, string contentType, string accessToken, CancellationToken ct = default, IReadOnlyDictionary<string, string>? extraFields = null) where T : class
     {
+        // 改动说明（v1.6.2）：原实现把上游 4xx 的 Problem detail（如"只支持 JPG、PNG、PDF 格式"）
+        // 吞成 null，端点只能回"上传失败"三个字，真机排障无从下手。非 2xx 现改抛
+        // UpstreamUploadException 携带上游 detail 文案，端点 catch 后透传给客户端。
+        var client = CreateApiClient(accessToken);
+        using var content = new MultipartFormDataContent();
+        var streamContent = new StreamContent(fileStream);
+        streamContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        content.Add(streamContent, "file", fileName);
+        // 改动说明（v1.6.0）：支持随 multipart 附带普通字段（证照材料上传的 type 参数），置于 ct 之后保持旧调用点兼容
+        if (extraFields != null)
+        {
+            foreach (var (key, value) in extraFields)
+            {
+                content.Add(new StringContent(value), key);
+            }
+        }
+        HttpResponseMessage response;
         try
         {
-            var client = CreateApiClient(accessToken);
-            using var content = new MultipartFormDataContent();
-            var streamContent = new StreamContent(fileStream);
-            streamContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
-            content.Add(streamContent, "file", fileName);
-            // 改动说明（v1.6.0）：支持随 multipart 附带普通字段（证照材料上传的 type 参数），置于 ct 之后保持旧调用点兼容
-            if (extraFields != null)
-            {
-                foreach (var (key, value) in extraFields)
-                {
-                    content.Add(new StringContent(value), key);
-                }
-            }
-            var response = await client.PostAsync(path, content, ct);
-            response.EnsureSuccessStatusCode();
-            var wrapper = await response.Content.ReadFromJsonAsync<ApiResponseWrapper<T>>(JsonOptions, ct);
-            return wrapper?.Data;
+            response = await client.PostAsync(path, content, ct);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "API UPLOAD {Path} 失败", path);
-            return null;
+            _logger.LogWarning(ex, "API UPLOAD {Path} 连接失败", path);
+            throw new UpstreamUploadException("无法连接上游服务");
         }
+        using (response)
+        {
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync(ct);
+                var detail = ExtractProblemDetail(body);
+                _logger.LogWarning("API UPLOAD {Path} 失败 {Status}: {Body}", path, (int)response.StatusCode, body);
+                throw new UpstreamUploadException(detail ?? $"上游服务返回 {(int)response.StatusCode}");
+            }
+            var wrapper = await response.Content.ReadFromJsonAsync<ApiResponseWrapper<T>>(JsonOptions, ct);
+            return wrapper?.Data;
+        }
+    }
+
+    /// <summary>上传类上游错误：Message 为可直接展示给用户的真实失败原因（API Problem detail 透传）</summary>
+    public sealed class UpstreamUploadException(string message) : Exception(message);
+
+    /// <summary>从 ProblemDetails JSON 里提取 detail（缺省退 title），解析失败返回 null</summary>
+    private static string? ExtractProblemDetail(string body)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            if (root.TryGetProperty("detail", out var d) && d.ValueKind == JsonValueKind.String)
+                return d.GetString();
+            if (root.TryGetProperty("title", out var t) && t.ValueKind == JsonValueKind.String)
+                return t.GetString();
+        }
+        catch (JsonException) { /* 非 JSON 响应按 null 处理 */ }
+        return null;
     }
 
     /// <summary>

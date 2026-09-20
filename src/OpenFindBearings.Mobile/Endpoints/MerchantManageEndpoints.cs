@@ -111,9 +111,17 @@ public static class MerchantManageEndpoints
             if (file == null || file.Length == 0)
                 return Results.BadRequest(new { success = false, message = "请选择文件" });
 
-            var result = await api.UploadAsync<object>(
-                "/api/merchant/inventory/import", file.OpenReadStream(), file.FileName, file.ContentType, token, ct);
-            return Results.Ok(new { success = true, message = "导入处理完成" });
+            // 改动说明（v1.6.2）：上游失败原因透传（UploadAsync 非 2xx 抛 UpstreamUploadException）
+            try
+            {
+                await api.UploadAsync<object>(
+                    "/api/merchant/inventory/import", file.OpenReadStream(), file.FileName, file.ContentType, token, ct);
+                return Results.Ok(new { success = true, message = "导入处理完成" });
+            }
+            catch (ApiClient.UpstreamUploadException ex)
+            {
+                return Results.Ok(new { success = false, message = ex.Message });
+            }
         })
         .WithName("ImportMerchantInventory")
         .WithSummary("Excel 批量导入在售商品")
@@ -138,13 +146,20 @@ public static class MerchantManageEndpoints
             if (file == null || file.Length == 0)
                 return Results.BadRequest(new { success = false, message = "请选择文件" });
 
-            var result = await api.UploadAsync<object>(
-                "/api/merchant/documents", file.OpenReadStream(), file.FileName, file.ContentType, token, ct,
-                new Dictionary<string, string> { ["type"] = type.ToString() });
-            // 改动说明：上游错误不再虚假成功——UploadAsync 吞错返回 null 时透出失败
-            return result is null
-                ? Results.Json(new { success = false, message = "材料提交失败（类型无效或已有待审执照）" }, statusCode: 502)
-                : Results.Ok(new { success = true, message = "材料已提交，等待审核" });
+            // 改动说明（v1.6.2）：上游 4xx 的 detail 经 UpstreamUploadException 透传，不再固定文案
+            try
+            {
+                var result = await api.UploadAsync<object>(
+                    "/api/merchant/documents", file.OpenReadStream(), file.FileName, file.ContentType, token, ct,
+                    new Dictionary<string, string> { ["type"] = type.ToString() });
+                return result is null
+                    ? Results.Json(new { success = false, message = "材料提交失败（类型无效或已有待审执照）" }, statusCode: 502)
+                    : Results.Ok(new { success = true, message = "材料已提交，等待审核" });
+            }
+            catch (ApiClient.UpstreamUploadException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: 502);
+            }
         })
         .WithName("UploadMerchantDocument")
         .WithSummary("上传证照材料")
@@ -187,11 +202,19 @@ public static class MerchantManageEndpoints
             using var ms = new MemoryStream();
             await file.OpenReadStream().CopyToAsync(ms, ct);
             ms.Position = 0;
-            var data = await api.UploadAsync<DocumentUrlResult>(
-                "/api/merchant/documents/upload", ms, file.FileName, file.ContentType ?? "image/jpeg", token, ct);
-            return data?.Url is null
-                ? Results.Ok(new { success = false, message = "上传失败" })
-                : Results.Ok(new { success = true, url = data.Url });
+            // 改动说明（v1.6.2）：透传上游真实失败原因（扩展名/MIME/大小限制等 400 文案）
+            try
+            {
+                var data = await api.UploadAsync<DocumentUrlResult>(
+                    "/api/merchant/documents/upload", ms, file.FileName, file.ContentType ?? "image/jpeg", token, ct);
+                return data?.Url is null
+                    ? Results.Ok(new { success = false, message = "上传失败" })
+                    : Results.Ok(new { success = true, url = data.Url });
+            }
+            catch (ApiClient.UpstreamUploadException ex)
+            {
+                return Results.Ok(new { success = false, message = ex.Message });
+            }
         })
         .WithName("UploadDocumentFile")
         .WithSummary("材料文件预上传")
@@ -254,12 +277,20 @@ public static class MerchantManageEndpoints
                 return Results.Ok(new { success = false, message = "请选择图片" });
 
             using var stream = file.OpenReadStream();
-            var data = await api.UploadAsync<LogoUrlResult>(
-                "/api/merchant/logo", stream, file.FileName, file.ContentType ?? "image/jpeg", token, ct);
-            if (data?.Url == null)
-                return Results.Ok(new { success = false, message = "上传失败（可能无管理员权限）" });
+            // 改动说明（v1.6.2）：透传上游真实失败原因
+            try
+            {
+                var data = await api.UploadAsync<LogoUrlResult>(
+                    "/api/merchant/logo", stream, file.FileName, file.ContentType ?? "image/jpeg", token, ct);
+                if (data?.Url == null)
+                    return Results.Ok(new { success = false, message = "上传失败（可能无管理员权限）" });
 
-            return Results.Ok(new { success = true, url = data.Url });
+                return Results.Ok(new { success = true, url = data.Url });
+            }
+            catch (ApiClient.UpstreamUploadException ex)
+            {
+                return Results.Ok(new { success = false, message = ex.Message });
+            }
         })
         .WithName("UploadMerchantLogo")
         .WithSummary("上传商户Logo")
