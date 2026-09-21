@@ -94,6 +94,43 @@ public static class NotificationEndpoints
         .WithSummary("全部站内信标记已读")
         .WithDescription("批量将当前用户未读通知置为已读")
         .RequireAuthorization();
+
+        /// <summary>
+        /// 删除单条站内信（v1.7.2 消息中心左滑删除代理）
+        /// </summary>
+        group.MapDelete("/{id}", async (
+            string id,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var ok = await api.DeleteVoidAsync($"/api/notifications/{id}", token, ct);
+            return Results.Ok(new { success = ok });
+        })
+        .WithName("DeleteNotification")
+        .WithSummary("删除单条站内信")
+        .WithDescription("硬删本人收件箱内的一条消息")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 清空已读站内信（v1.7.2 消息中心"清空已读"代理，未读保留）
+        /// </summary>
+        group.MapDelete("/read", async (
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var ok = await api.DeleteVoidAsync("/api/notifications/read", token, ct);
+            return Results.Ok(new { success = ok });
+        })
+        .WithName("ClearReadNotifications")
+        .WithSummary("清空已读站内信")
+        .WithDescription("批量删除当前用户所有已读消息，未读不受影响")
+        .RequireAuthorization();
     }
 
     private static string? GetToken(HttpContext http) =>
