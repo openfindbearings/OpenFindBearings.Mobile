@@ -734,8 +734,9 @@ public static class MerchantEndpoints
     ///   前端无法自判本人行，由 API 权威标记透传。
     /// 改动说明（v1.6.4）：加 InvitationId——Status=Invited 行为待确认邀请（v2.9.0 邀请确认制），
     ///   撤销操作用此 ID（此类行 Id 为空 Guid，无成员可操作）
+    /// 改动说明（v1.6.5）：加 Mobile——成员详情面板展示手机号（API 侧仅本商户成员列表端点返回）
     /// </summary>
-    public record MerchantStaffItem(Guid Id, string Nickname, string? Avatar, string? Role, string Status, bool IsSelf, Guid? InvitationId);
+    public record MerchantStaffItem(Guid Id, string Nickname, string? Avatar, string? Role, string Status, bool IsSelf, Guid? InvitationId, string? Mobile, DateTime? JoinedAt);
 
     /// <summary>
     /// 待我确认的员工邀请项（v1.6.4，对齐 API PendingStaffInvitationDto；商户页横幅消费）
