@@ -370,15 +370,109 @@ public static class MerchantEndpoints
             var token = GetToken(http);
             if (string.IsNullOrEmpty(token))
                 return Results.Unauthorized();
-            var result = await api.PostWithResultAsync<object>("/api/merchant/staff", body, token, ct);
+            // 改动说明（v1.6.4 邀请确认制）：透传 API 真实文案（"邀请已发送，对方同意后加入"等），
+            //   原固定"成员已添加"与静默入伙语义一并废弃
+            var result = await api.PostWithResultAsync<AddStaffResponse>("/api/merchant/staff", body, token, ct);
             if (result.Success)
-                return Results.Ok(new { success = true, message = "成员已添加" });
+                return Results.Ok(new { success = true, message = result.Data?.Message ?? "邀请已发送，对方同意后加入" });
             return Results.Json(new { success = false, message = result.ErrorText ?? "添加失败" },
                 statusCode: result.StatusCode > 0 ? result.StatusCode : 502);
         })
         .WithName("AddMerchantStaff")
         .WithSummary("添加商户成员")
-        .WithDescription("管理员按手机号/邮箱添加已注册用户为成员")
+        .WithDescription("管理员按手机号/邮箱邀请用户，已注册用户转为待确认邀请（v2.9.0 邀请确认制）")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 待我确认的员工邀请列表（v1.6.4 代理，透传 API GET /api/merchant/staff/invitations/pending）
+        /// </summary>
+        group.MapGet("/staff/invitations/pending", async (
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token))
+                return Results.Unauthorized();
+
+            var result = await api.GetAsync<List<PendingStaffInvitationItem>>("/api/merchant/staff/invitations/pending", token, ct);
+            return Results.Ok(result ?? []);
+        })
+        .WithName("GetPendingStaffInvitations")
+        .WithSummary("待我确认的员工邀请")
+        .WithDescription("被邀人查看发给自己的商户邀请（按 JWT 手机号匹配）")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 接受员工邀请（v1.6.4 代理；API 400/401 业务原因透传给横幅操作反馈）
+        /// </summary>
+        group.MapPost("/staff/invitations/{invitationId}/accept", async (
+            string invitationId,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token))
+                return Results.Unauthorized();
+
+            var result = await api.PostWithResultAsync<object>($"/api/merchant/staff/invitations/{invitationId}/accept", new { }, token, ct);
+            if (result.Success)
+                return Results.Ok(new { success = true, message = "已接受邀请，正式加入商户" });
+            return Results.Json(new { success = false, message = result.ErrorText ?? "接受失败" },
+                statusCode: result.StatusCode > 0 ? result.StatusCode : 502);
+        })
+        .WithName("AcceptStaffInvitation")
+        .WithSummary("接受员工邀请")
+        .WithDescription("被邀人同意加入商户")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 拒绝员工邀请（v1.6.4 代理）
+        /// </summary>
+        group.MapPost("/staff/invitations/{invitationId}/decline", async (
+            string invitationId,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token))
+                return Results.Unauthorized();
+
+            var result = await api.PostWithResultAsync<object>($"/api/merchant/staff/invitations/{invitationId}/decline", new { }, token, ct);
+            if (result.Success)
+                return Results.Ok(new { success = true, message = "已拒绝邀请" });
+            return Results.Json(new { success = false, message = result.ErrorText ?? "操作失败" },
+                statusCode: result.StatusCode > 0 ? result.StatusCode : 502);
+        })
+        .WithName("DeclineStaffInvitation")
+        .WithSummary("拒绝员工邀请")
+        .WithDescription("被邀人拒绝商户邀请")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 撤销员工邀请（v1.6.4 代理，管理员撤回待确认邀请）
+        /// </summary>
+        group.MapPost("/staff/invitations/{invitationId}/revoke", async (
+            string invitationId,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token))
+                return Results.Unauthorized();
+
+            var result = await api.PostWithResultAsync<object>($"/api/merchant/staff/invitations/{invitationId}/revoke", new { }, token, ct);
+            if (result.Success)
+                return Results.Ok(new { success = true, message = "邀请已撤销" });
+            return Results.Json(new { success = false, message = result.ErrorText ?? "撤销失败" },
+                statusCode: result.StatusCode > 0 ? result.StatusCode : 502);
+        })
+        .WithName("RevokeStaffInvitation")
+        .WithSummary("撤销员工邀请")
+        .WithDescription("商户管理员撤回待确认的员工邀请")
         .RequireAuthorization();
 
         /// <summary>
@@ -613,9 +707,16 @@ public static class MerchantEndpoints
         string? RejectReason, string Role, bool IsVerified, string? LogoUrl, bool VerifyRequested);
 
     /// <summary>
-    /// 可认领爬虫商家项（对齐 API ClaimableMerchantDto）
+    /// 入驻发现搜索项（对齐 API ClaimableMerchantDto；v1.6.4 全量匹配 + 认领可行性标记）
     /// </summary>
-    public record ClaimableMerchantItem(Guid Id, string Name, string? CompanyName, string Type);
+    public record ClaimableMerchantItem(
+        Guid Id,
+        string Name,
+        string? CompanyName,
+        string Type,
+        bool IsClaimable,
+        bool IsMine,
+        string StatusText);
 
     /// <summary>
     /// 待接受提名项（对齐 API PendingNominationDto）
@@ -630,9 +731,22 @@ public static class MerchantEndpoints
     /// <summary>
     /// 商户成员项（对齐 API MerchantStaffDto）
     /// 改动说明（v1.6.3）：加 IsSelf——Taro 登录态 id 是 Identity sub 与成员 UserId 不同源，
-    ///   前端无法自判本人行，由 API 权威标记透传
+    ///   前端无法自判本人行，由 API 权威标记透传。
+    /// 改动说明（v1.6.4）：加 InvitationId——Status=Invited 行为待确认邀请（v2.9.0 邀请确认制），
+    ///   撤销操作用此 ID（此类行 Id 为空 Guid，无成员可操作）
     /// </summary>
-    public record MerchantStaffItem(Guid Id, string Nickname, string? Avatar, string? Role, string Status, bool IsSelf);
+    public record MerchantStaffItem(Guid Id, string Nickname, string? Avatar, string? Role, string Status, bool IsSelf, Guid? InvitationId);
+
+    /// <summary>
+    /// 待我确认的员工邀请项（v1.6.4，对齐 API PendingStaffInvitationDto；商户页横幅消费）
+    /// </summary>
+    public record PendingStaffInvitationItem(
+        Guid InvitationId,
+        Guid MerchantId,
+        string MerchantName,
+        string Role,
+        string? InvitedByName,
+        DateTime CreatedAt);
 
     /// <summary>
     /// 变更成员角色请求体
@@ -643,6 +757,11 @@ public static class MerchantEndpoints
     /// 添加成员请求体（对齐 API AddStaffCommand：手机号/邮箱二选一 + 角色）
     /// </summary>
     public record AddStaffRequest(string? Phone, string? Email, string? Role);
+
+    /// <summary>
+    /// 添加成员响应（v1.6.4：透传 API AddStaffResult.Message 真实文案）
+    /// </summary>
+    public record AddStaffResponse(string? Message);
 
     // ============ 工具 ============
 
