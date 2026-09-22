@@ -258,6 +258,72 @@ public static class MeEndpoints
         .DisableAntiforgery()
         .WithSummary("上传头像");
 
+        // ============ 信息纠错（v1.7.4） ============
+
+        /// <summary>
+        /// 提交轴承纠错：透传 API /api/me/bearings/{id}/corrections。
+        /// 去重守卫/校验失败时把上游 400 的 message 原样带给客户端（PostWithResultAsync），
+        /// 前端据此提示"该字段的纠错已在审核中"
+        /// </summary>
+        group.MapPost("/corrections/bearings/{bearingId}", async (
+            string bearingId, SubmitCorrectionBody body, HttpContext http, ApiClient api, CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+
+            var result = await api.PostWithResultAsync<object>(
+                $"/api/me/bearings/{bearingId}/corrections",
+                new { fieldName = body.FieldName, suggestedValue = body.SuggestedValue, reason = body.Reason },
+                token, ct);
+            return Results.Ok(new { success = result.Success, message = result.ErrorText ?? "纠错已提交，感谢反馈" });
+        })
+        .WithName("SubmitBearingCorrectionProxy")
+        .WithSummary("提交轴承纠错");
+
+        /// <summary>提交商家纠错（同上，透传上游失败原因）</summary>
+        group.MapPost("/corrections/merchants/{merchantId}", async (
+            string merchantId, SubmitCorrectionBody body, HttpContext http, ApiClient api, CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+
+            var result = await api.PostWithResultAsync<object>(
+                $"/api/me/merchants/{merchantId}/corrections",
+                new { fieldName = body.FieldName, suggestedValue = body.SuggestedValue, reason = body.Reason },
+                token, ct);
+            return Results.Ok(new { success = result.Success, message = result.ErrorText ?? "纠错已提交，感谢反馈" });
+        })
+        .WithName("SubmitMerchantCorrectionProxy")
+        .WithSummary("提交商家纠错");
+
+        /// <summary>我的纠错列表（分页，含审核中/已采纳/未采纳）</summary>
+        group.MapGet("/corrections", async (
+            HttpContext http, ApiClient api, [AsParameters] ProfileEndpoints.PageQuery query, CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var path = $"/api/me/corrections?page={query.Page}&pageSize={query.PageSize}";
+            var result = await api.GetPagedAsync<CorrectionItem>(path, token, ct);
+            return Results.Ok(result ?? new ApiClient.PagedResult<CorrectionItem>([], 0, 1, 20));
+        })
+        .WithName("GetMyCorrectionsProxy")
+        .WithSummary("我的纠错列表");
+
+        /// <summary>
+        /// 可纠错字段清单（v1.7.4）：代理 API /api/me/corrections/fields——
+        /// 返回轴承/商家各自可纠错的字段（键+中文名+当前值），供前端纠错表单渲染"选字段→显示当前值→填应改为"
+        /// </summary>
+        group.MapGet("/corrections/fields/{targetType}/{targetId}", async (
+            string targetType, string targetId, HttpContext http, ApiClient api, CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var data = await api.GetAsync<List<CorrectionFieldOption>>($"/api/me/corrections/fields/{targetType}/{targetId}", token, ct);
+            return Results.Ok(data ?? []);
+        })
+        .WithName("GetCorrectionFieldsProxy")
+        .WithSummary("可纠错字段清单");
+
         /// <summary>
         /// 注销账户代理（v1.7.3）：透传 API /api/me/deactivate。守卫拒绝（如唯一管理员）时
         /// 必须把上游 message 原样带给客户端引导处理，故用 PostWithResultAsync 而非 Void
@@ -325,4 +391,16 @@ public static class MeEndpoints
         int? Occupation,
         string? CompanyName,
         string? Industry);
+
+    /// <summary>纠错提交请求体（v1.7.4，字段键+建议值+理由）</summary>
+    public record SubmitCorrectionBody(string FieldName, string SuggestedValue, string? Reason);
+
+    /// <summary>我的纠错条目（v1.7.4，对齐 API CorrectionDto 前端所需字段）</summary>
+    public record CorrectionItem(
+        Guid Id, string TargetType, string TargetDisplay, string FieldName,
+        string FieldDisplayName, string? OriginalValue, string SuggestedValue,
+        string? Reason, DateTime SubmittedAt, string Status, string? ReviewComment);
+
+    /// <summary>可纠错字段选项（v1.7.4：键+中文名+当前值，前端表单渲染用）</summary>
+    public record CorrectionFieldOption(string Key, string Label, string? CurrentValue);
 }
