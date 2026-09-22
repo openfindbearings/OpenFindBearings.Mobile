@@ -257,6 +257,25 @@ public static class MeEndpoints
         //   BFF 未配 UseAntiforgery 中间件会直接 500，纯 Bearer API 显式关闭
         .DisableAntiforgery()
         .WithSummary("上传头像");
+
+        /// <summary>
+        /// 注销账户代理（v1.7.3）：透传 API /api/me/deactivate。守卫拒绝（如唯一管理员）时
+        /// 必须把上游 message 原样带给客户端引导处理，故用 PostWithResultAsync 而非 Void
+        /// </summary>
+        group.MapPost("/deactivate", async (
+            HttpContext http, ApiClient api, CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+
+            var result = await api.PostWithResultAsync<object>(
+                "/api/me/deactivate", null, token, ct);
+
+            // 上游 400 的 detail 文案（如"您仍是商户「XX」的唯一管理员…"）经 ErrorText 透传给客户端
+            return Results.Ok(new { success = result.Success, message = result.ErrorText ?? "账户已注销" });
+        })
+        .WithName("DeactivateAccount")
+        .WithSummary("注销账户");
     }
 
     // ============ 工具 ============
