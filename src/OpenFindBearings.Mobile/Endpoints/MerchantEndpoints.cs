@@ -149,6 +149,30 @@ public static class MerchantEndpoints
         .RequireAuthorization();
 
         /// <summary>
+        /// 商户自助关店（v1.7.5，需登录）：透传 API /api/merchant/{id}/close，
+        /// 上游守卫文案（非管理员/状态不符）按状态码原样透传给 Taro 弹窗呈现
+        /// </summary>
+        group.MapPost("/{merchantId:guid}/close", async (
+            Guid merchantId,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token))
+                return Results.Unauthorized();
+            var result = await api.PostWithResultAsync<object>($"/api/merchant/{merchantId}/close", null, token, ct);
+            if (result.Success)
+                return Results.Ok(new { success = true, message = result.Data?.ToString() ?? "店铺已关闭" });
+            return Results.Json(new { success = false, message = result.ErrorText ?? "关店失败" },
+                statusCode: result.StatusCode > 0 ? result.StatusCode : 502);
+        })
+        .WithName("CloseMerchant")
+        .WithSummary("商户关店")
+        .WithDescription("任一在职管理员自助关闭店铺：认领商户退回公开信息池，自建商户直接删除，需登录")
+        .RequireAuthorization();
+
+        /// <summary>
         /// 商户申请认证（v1.6.3 新增代理，管理员；透传 API POST /api/merchant/{id}/verify-request，
         /// 材料不齐时按 400 detail 透传缺项引导文案）
         /// </summary>
