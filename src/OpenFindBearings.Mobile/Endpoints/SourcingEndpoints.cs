@@ -252,6 +252,8 @@ public record SourcingMyResponse(
 public record SourcingDetailResponse(
     Guid Id,
     string PartNumber,
+    // v1.7.9：透传 bearingId（应答预填"我的在售同款"精确匹配）
+    Guid? BearingId,
     string? Brand,
     string? Quantity,
     string? ExpectedDelivery,

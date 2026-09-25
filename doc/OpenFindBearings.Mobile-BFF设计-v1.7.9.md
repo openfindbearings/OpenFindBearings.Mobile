@@ -1,7 +1,7 @@
 
-- v1.7.8 寻货额度代理：GET /mobile/sourcing/quota 透传 API /api/sourcing/quota（额度条数据源，token+X-Merchant-Id 上下文）。
-- v1.7.8 积分代理组：`/mobile/points/account|checkin|transactions` 三端点（token 透传，对齐 API v1.32.0 / 《11-积分体系设计 v1.0.0》），供 Taro 我的页积分卡、签到按钮与明细页消费。
-- v1.7.5 商户关店代理：POST /mobile/merchants/{id}/close 透传 API /api/merchant/{id}/close（PostWithResultAsync，上游守卫文案 400/409 原样透传给 Taro 弹窗）。# OpenFindBearings.Mobile BFF 设计 v1.7.8
+- v1.7.9 寻货额度代理：GET /mobile/sourcing/quota 透传 API /api/sourcing/quota（额度条数据源，token+X-Merchant-Id 上下文）。
+- v1.7.9 积分代理组：`/mobile/points/account|checkin|transactions` 三端点（token 透传，对齐 API v1.32.0 / 《11-积分体系设计 v1.0.0》），供 Taro 我的页积分卡、签到按钮与明细页消费。
+- v1.7.5 商户关店代理：POST /mobile/merchants/{id}/close 透传 API /api/merchant/{id}/close（PostWithResultAsync，上游守卫文案 400/409 原样透传给 Taro 弹窗）。# OpenFindBearings.Mobile BFF 设计 v1.7.9
 
 ## 概述
 
