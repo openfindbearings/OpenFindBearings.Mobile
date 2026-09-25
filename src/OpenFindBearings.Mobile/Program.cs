@@ -138,6 +138,8 @@ mobile.MapGroup("/merchant").MapMerchantManageEndpoints();
 mobile.MapGroup("/notifications").MapNotificationEndpoints();
 // v1.7.6 积分底座：账户/签到/流水代理（我的页积分卡与明细页）
 mobile.MapGroup("/points").MapPointsEndpoints();
+// v1.7.8 寻货：feed/详情/发布/应答/选定/我的列表代理（发现 tab 与商家应答页）
+mobile.MapGroup("/sourcing").MapSourcingEndpoints();
 mobile.MapProfileEndpoints();
 // /mobile/me/*：收藏/关注/历史/资料编辑写操作代理（用户 token 透传）
 mobile.MapGroup("/me").MapMeEndpoints();
