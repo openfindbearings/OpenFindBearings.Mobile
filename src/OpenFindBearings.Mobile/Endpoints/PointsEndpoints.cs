@@ -75,6 +75,25 @@ public static class PointsEndpoints
         .WithSummary("积分流水")
         .WithDescription("当前用户积分收支明细分页")
         .RequireAuthorization();
+
+        /// <summary>
+        /// 赚分任务清单（v1.7.7 任务中心：规则+完成态）
+        /// </summary>
+        group.MapGet("/tasks", async (
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+
+            var result = await api.GetAsync<List<PointTaskItem>>("/api/points/tasks", token, ct);
+            return Results.Ok(result ?? new List<PointTaskItem>());
+        })
+        .WithName("GetPointTasks")
+        .WithSummary("赚分任务清单")
+        .WithDescription("任务中心数据源：启用规则与本人完成态")
+        .RequireAuthorization();
     }
 
     private static string? GetToken(HttpContext http) =>
@@ -95,4 +114,14 @@ public static class PointsEndpoints
         int BalanceAfter,
         string? Remark,
         DateTime CreatedAt);
+
+    /// <summary>任务项（对齐 API /api/points/tasks；daily=每日刷新任务，done 按今日/历史口径）</summary>
+    public record PointTaskItem(
+        string GrantType,
+        string DisplayName,
+        int Amount,
+        string? Description,
+        List<int>? Ladder,
+        bool Daily,
+        bool Done);
 }
