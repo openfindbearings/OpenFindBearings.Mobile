@@ -118,7 +118,7 @@ public static class BearingEndpoints
         int ViewCount, int FavoriteCount);
 
     public record BearingMerchantItem(
-        Guid MerchantId, string MerchantName, string? Price, bool IsOnSale);
+        Guid MerchantId, string MerchantName, string? Price, bool IsOnSale, bool IsRestocking, string? RestockEta);
 
     public record InterchangeItem(
         Guid Id, string PartNumber, string BrandName, string BearingType, int Confidence);

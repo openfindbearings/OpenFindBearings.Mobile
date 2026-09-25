@@ -99,6 +99,24 @@ public static class MerchantManageEndpoints
         .RequireAuthorization();
 
         /// <summary>
+        /// 置为补货中（v1.7.9 三态销售状态）：透传 API restock（eta 由前端 query 传入，BFF 组装请求体）
+        /// </summary>
+        group.MapPost("/bearings/{id}/restock", async (
+            string id,
+            string? eta,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var r = await api.PostAsync<object>($"/api/merchant/bearings/{id}/restock", new { restockEta = eta }, token, ct);
+            return Results.Ok(new { success = r != null, message = r != null ? "已置为补货中" : "操作失败" });
+        })
+        .WithName("RestockMerchantBearing")
+        .WithSummary("置为补货中")
+        .RequireAuthorization();
+        /// <summary>
         /// 下架在售商品
         /// </summary>
         group.MapPost("/bearings/{id}/offshelf", async (
@@ -361,6 +379,8 @@ public static class MerchantManageEndpoints
         string? BearingTypeName, string? BrandName,
         decimal? InnerDiameter, decimal? OuterDiameter, decimal? Width,
         string? Price, bool IsOnSale,
+        // v1.7.9 三态销售状态：补货中与预计到货时间透传
+        bool IsRestocking, string? RestockEta,
         string? PriceDescription, string? StockDescription, string? MinOrderDescription,
         string? Remarks, bool IsPendingApproval);
 
