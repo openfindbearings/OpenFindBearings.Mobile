@@ -133,6 +133,24 @@ public static class SourcingEndpoints
         .RequireAuthorization();
 
         /// <summary>
+        /// 寻货额度聚合（v1.7.8 额度可见化）：发布/页额度条与按钮三态的数据源，透传 API 口径
+        /// </summary>
+        group.MapGet("/quota", async (
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+
+            var result = await api.GetAsync<SourcingQuotaResponse>("/api/sourcing/quota", token, ct);
+            return Results.Ok(result);
+        })
+        .WithName("GetSourcingQuota")
+        .WithSummary("寻货额度聚合")
+        .RequireAuthorization();
+
+        /// <summary>
         /// 我发布的寻货（个人维度列表）
         /// </summary>
         group.MapGet("/my/demands", async (
@@ -200,6 +218,12 @@ public record SourcingFeedItem(
 
 /// <summary>feed 分页响应</summary>
 public record SourcingFeedResponse(SourcingFeedItem[] Items, int Total);
+
+/// <summary>额度条单项（免费额度/今日已用/硬上限/积分单价）</summary>
+public record SourcingQuotaItem(int FreeLimit, int TodayUsed, int HardLimit, int PointsPrice);
+
+/// <summary>寻货额度聚合响应（v1.7.8 额度可见化）</summary>
+public record SourcingQuotaResponse(SourcingQuotaItem Publish, SourcingQuotaItem Respond, int Balance);
 
 /// <summary>应答明细（发布人可见全量）</summary>
 public record SourcingResponseDetail(
