@@ -57,6 +57,9 @@ public static class ConfigEndpoints
         string SiteName,
         string SiteDescription,
         string SiteBeiAn,
+        // 改动说明（v1.37.0 备案拆分）：App/小程序独立备案透传，前端按平台取用
+        string BeiAnApp,
+        string BeiAnMini,
         string CustomerService,
         string AppVersion,
         string DownloadUrl,
