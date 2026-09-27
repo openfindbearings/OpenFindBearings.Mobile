@@ -7,7 +7,9 @@ namespace OpenFindBearings.Mobile.Endpoints;
 public record MallItemResponse(
     Guid Id, string Key, string Name, string Description, string Icon, int Category,
     int Price, int? OriginalPrice, bool Flashing, DateTime? FlashEnd,
-    int? DurationHours, int Stock, int SoldCount, bool SoldOut, string? OwnerMerchantName);
+    int? DurationHours, int Stock, int SoldCount, bool SoldOut, string? OwnerMerchantName,
+    // 改动说明（v2.10.0 寻货置顶）：置顶对象类型透传（1=商品/2=需求），前端分节与定价单位据此区分
+    int TargetKind = 1);
 
 /// <summary>商城目录（含余额，供前端三态按钮）</summary>
 public record MallCatalogResponse(

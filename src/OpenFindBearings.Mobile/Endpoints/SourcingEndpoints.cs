@@ -214,7 +214,10 @@ public record SourcingFeedItem(
     int ResponseCount,
     DateTime CreatedAt,
     DateTime ExpiryAt,
-    bool IsMine);
+    bool IsMine,
+    // 改动说明（v2.10.0 寻货置顶）：置顶标记透传（大厅角标/排序展示）
+    bool IsPinned = false,
+    DateTime? PinnedUntil = null);
 
 /// <summary>feed 分页响应</summary>
 public record SourcingFeedResponse(SourcingFeedItem[] Items, int Total);
@@ -289,7 +292,10 @@ public record SourcingMyDemandItem(
     int Status,
     int ResponseCount,
     DateTime CreatedAt,
-    DateTime ExpiryAt);
+    DateTime ExpiryAt,
+    // 改动说明（v2.10.0 寻货置顶）："我的"页置顶按钮态透传
+    bool IsPinned = false,
+    DateTime? PinnedUntil = null);
 
 /// <summary>商户应答记录项（含需求快照）</summary>
 public record SourcingMerchantResponseItem(
