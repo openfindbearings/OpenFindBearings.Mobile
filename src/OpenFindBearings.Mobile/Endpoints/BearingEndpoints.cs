@@ -117,8 +117,10 @@ public static class BearingEndpoints
         string? Image3DUrl, string? Image2DUrl,
         int ViewCount, int FavoriteCount);
 
+    // v2.3.0 商城置顶卡：透传置顶态（买家侧角标 + 排序已由 API 完成）
     public record BearingMerchantItem(
-        Guid MerchantId, string MerchantName, string? Price, bool IsOnSale, bool IsRestocking, string? RestockEta);
+        Guid MerchantId, string MerchantName, string? Price, bool IsOnSale, bool IsRestocking, string? RestockEta,
+        bool IsPinned = false, DateTime? PinnedUntil = null);
 
     public record InterchangeItem(
         Guid Id, string PartNumber, string BrandName, string BearingType, int Confidence);
