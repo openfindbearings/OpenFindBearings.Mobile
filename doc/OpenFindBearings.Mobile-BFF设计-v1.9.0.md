@@ -387,3 +387,8 @@ src/OpenFindBearings.Mobile/
 
 - 商家主页批次：GET /mobile/merchants/{id} 登录时透传 token（详情返回成员标记/角色）；MerchantDetail DTO 尾部补
   IsMerchantMember/MemberRole/CompletedTaskCount 三可选字段；/mobile/points/merchant-tasks 支持 merchantId 查询参数透传。
+
+## 本版追加（v1.9.0）：成就三端点透传勋章图键
+
+- AchievementItemResponse 新增 imageKey（透传 API AchievementProgressView.ImageKey），
+  wall/me/merchants/{id} 三个成就代理端点自动带上，Taro 据此渲染后台配置的勋章图。
