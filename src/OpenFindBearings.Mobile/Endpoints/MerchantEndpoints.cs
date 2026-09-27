@@ -29,13 +29,19 @@ public static class MerchantEndpoints
 
         /// <summary>
         /// 商家详情
+        /// 改动说明（v2.6.0 商家主页）：登录时透传 token——API 详情据此返回成员标记/角色（成员区渲染依据），
+        /// 匿名访问保持原样（无身份字段，公开门面照常）
         /// </summary>
         group.MapGet("/{id:guid}", async (
             Guid id,
             ApiClient api,
+            HttpContext http,
             CancellationToken ct) =>
         {
-            var result = await api.GetAsync<MerchantDetail>($"/api/merchants/{id}", ct);
+            var token = GetToken(http);
+            var result = string.IsNullOrEmpty(token)
+                ? await api.GetAsync<MerchantDetail>($"/api/merchants/{id}", ct)
+                : await api.GetAsync<MerchantDetail>($"/api/merchants/{id}", token, ct);
             return result is null ? Results.NotFound() : Results.Ok(result);
         })
         .WithName("GetMerchantDetail")
@@ -716,7 +722,9 @@ public static class MerchantEndpoints
         bool IsVerified, string? Status, string? Grade,
         int FollowerCount, int ProductCount, string? LogoUrl,
         // v2.5.0 商家经济：等级中文展示名透传（入驻/认证/活跃供给/金牌），置于尾部带缺省防位置错位
-        string? GradeDisplay = null);
+        string? GradeDisplay = null,
+        // v2.6.0 商家主页：成员标记（"进入管理"横幅）与集体任务累计达成数（勋章园卡通关史）
+        bool IsMerchantMember = false, int CompletedTaskCount = 0);
 
     public record MerchantBearingItem(
         Guid BearingId, string BearingPartNumber, string? OldNumber,
