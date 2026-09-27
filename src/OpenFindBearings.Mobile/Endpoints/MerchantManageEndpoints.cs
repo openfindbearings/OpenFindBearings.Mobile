@@ -477,7 +477,7 @@ public static class MerchantManageEndpoints
     public record CreateGiftProxyResponse(Guid? Id);
 
     /// <summary>金库账户响应（data 载荷）</summary>
-    public record MerchantTreasuryResponse(int Balance, int TotalEarned, int TotalSpent);
+    public record MerchantTreasuryResponse(int Balance, int TotalEarned, int TotalSpent, int Grade = 0, string? GradeDisplay = null);
 
     /// <summary>发货代理请求体</summary>
     public record ShipGiftProxyRequest(string? Tracking);

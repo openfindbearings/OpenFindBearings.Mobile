@@ -94,6 +94,24 @@ public static class PointsEndpoints
         .WithSummary("赚分任务清单")
         .WithDescription("任务中心数据源：启用规则与本人完成态")
         .RequireAuthorization();
+
+        /// <summary>
+        /// 工会福利卡（v2.5.0 工会经济）：成员最佳工会等级/福利清单/升级提示，散人为空
+        /// </summary>
+        group.MapGet("/guild-buff", async (
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+
+            var result = await api.GetAsync<GuildBuffResponse>("/api/points/guild-buff", token, ct);
+            return Results.Ok(result ?? new GuildBuffResponse(null, null, 0, 0, new List<string>(), ""));
+        })
+        .WithName("GetGuildBuff")
+        .WithSummary("工会福利卡")
+        .RequireAuthorization();
     }
 
     private static string? GetToken(HttpContext http) =>
@@ -127,4 +145,7 @@ public static class PointsEndpoints
         List<int>? Ladder,
         bool Daily,
         bool Done);
+
+    /// <summary>工会福利卡（透传 API /api/points/guild-buff，v2.5.0）</summary>
+    public record GuildBuffResponse(Guid? GuildId, string? GuildName, int Grade, int Rank, List<string> Labels, string NextHint);
 }
