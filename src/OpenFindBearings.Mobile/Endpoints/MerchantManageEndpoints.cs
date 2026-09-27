@@ -335,7 +335,155 @@ public static class MerchantManageEndpoints
         .WithDescription("上传商户 Logo 图片，返回可访问 URL（需商户管理员权限，保存资料时落库）")
         .DisableAntiforgery()
         .RequireAuthorization();
+
+        // ===== v2.4.0 工会经济：商家金库与挂礼代理（全部依赖 X-Merchant-Id 上下文，ApiClient 自动透传） =====
+
+        /// <summary>金库账户（余额/累计，仅管理员）</summary>
+        group.MapGet("/treasury", async (ApiClient api, HttpContext http, CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var result = await api.GetAsync<MerchantTreasuryResponse>("/api/merchant/treasury", token, ct);
+            return result == null
+                ? Results.Json(new { success = false, message = "金库加载失败" }, statusCode: 502)
+                : Results.Ok(result);
+        })
+        .WithName("GetMerchantTreasuryProxy")
+        .WithSummary("金库余额")
+        .RequireAuthorization();
+
+        /// <summary>金库流水分页</summary>
+        group.MapGet("/treasury/transactions", async (int page, int pageSize, ApiClient api, HttpContext http, CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var result = await api.GetPagedAsync<TreasuryTxItem>($"/api/merchant/treasury/transactions?page={page}&pageSize={pageSize}", token, ct);
+            return Results.Ok(result ?? new ApiClient.PagedResult<TreasuryTxItem>([], 0, 1, 20));
+        })
+        .WithName("GetMerchantTreasuryTransactionsProxy")
+        .WithSummary("金库流水")
+        .RequireAuthorization();
+
+        /// <summary>我的挂礼列表（含审核态）</summary>
+        group.MapGet("/gifts", async (ApiClient api, HttpContext http, CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var result = await api.GetAsync<List<JsonElement>>("/api/merchant/gifts", token, ct);
+            return Results.Ok(result ?? new List<JsonElement>());
+        })
+        .WithName("GetMerchantGiftsProxy")
+        .WithSummary("我的挂礼列表")
+        .RequireAuthorization();
+
+        /// <summary>申请挂礼（进待审，平台定档后上架；失败原因透传）</summary>
+        group.MapPost("/gifts", async (CreateGiftProxyRequest body, ApiClient api, HttpContext http, CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var call = await api.PostWithResultAsync<CreateGiftProxyResponse>("/api/merchant/gifts",
+                new { name = body.Name, description = body.Description, imageKey = body.ImageKey, stock = body.Stock }, token, ct);
+            if (!call.Success)
+                return Results.Json(new { success = false, message = call.ErrorText ?? "申请失败" }, statusCode: 400);
+            return Results.Ok(call.Data);
+        })
+        .WithName("CreateMerchantGiftProxy")
+        .WithSummary("申请挂礼")
+        .RequireAuthorization();
+
+        /// <summary>下架礼品</summary>
+        group.MapPost("/gifts/{id}/offshelf", async (Guid id, ApiClient api, HttpContext http, CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var call = await api.PostWithResultAsync<CreateGiftProxyResponse>($"/api/merchant/gifts/{id}/offshelf", new { }, token, ct);
+            return call.Success
+                ? Results.Ok(new { success = true, message = "已下架" })
+                : Results.Json(new { success = false, message = call.ErrorText ?? "下架失败" }, statusCode: 400);
+        })
+        .WithName("OffShelfMerchantGiftProxy")
+        .WithSummary("下架礼品")
+        .RequireAuthorization();
+
+        /// <summary>礼品图上传（对象存储相对 URL；失败原因透传，与材料上传同机制）</summary>
+        group.MapPost("/gifts/image", async (IFormFile file, ApiClient api, HttpContext http, CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            if (file == null || file.Length == 0)
+                return Results.BadRequest(new { success = false, message = "请选择文件" });
+            using var ms = new MemoryStream();
+            await file.OpenReadStream().CopyToAsync(ms, ct);
+            ms.Position = 0;
+            try
+            {
+                var data = await api.UploadAsync<GiftImageResult>(
+                    "/api/merchant/gifts/image", ms, file.FileName, file.ContentType ?? "image/jpeg", token, ct);
+                return data?.Url is null
+                    ? Results.Ok(new { success = false, message = "上传失败" })
+                    : Results.Ok(new { success = true, url = data.Url });
+            }
+            catch (ApiClient.UpstreamUploadException ex)
+            {
+                return Results.Ok(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("UploadMerchantGiftImageProxy")
+        .WithSummary("礼品图上传")
+        .DisableAntiforgery()
+        .RequireAuthorization();
+
+        /// <summary>礼品订单列表（可按发货状态过滤；含收货信息供发货）</summary>
+        group.MapGet("/gift-orders", async (int? shipStatus, int page, int pageSize, ApiClient api, HttpContext http, CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var path = $"/api/merchant/gift-orders?page={page}&pageSize={pageSize}";
+            if (shipStatus.HasValue) path += $"&shipStatus={shipStatus.Value}";
+            var result = await api.GetPagedAsync<GiftOrderItem>(path, token, ct);
+            return Results.Ok(result ?? new ApiClient.PagedResult<GiftOrderItem>([], 0, 1, 20));
+        })
+        .WithName("GetMerchantGiftOrdersProxy")
+        .WithSummary("礼品订单列表")
+        .RequireAuthorization();
+
+        /// <summary>发货登记（物流单号必填；失败原因透传）</summary>
+        group.MapPost("/gift-orders/{id}/ship", async (Guid id, ShipGiftProxyRequest body, ApiClient api, HttpContext http, CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var call = await api.PostWithResultAsync<CreateGiftProxyResponse>($"/api/merchant/gift-orders/{id}/ship", new { tracking = body.Tracking }, token, ct);
+            return call.Success
+                ? Results.Ok(new { success = true, message = "已发货" })
+                : Results.Json(new { success = false, message = call.ErrorText ?? "发货失败" }, statusCode: 400);
+        })
+        .WithName("ShipMerchantGiftOrderProxy")
+        .WithSummary("礼品发货")
+        .RequireAuthorization();
     }
+
+    /// <summary>金库流水条目（透传 API /api/merchant/treasury/transactions items）</summary>
+    public record TreasuryTxItem(int Direction, string Scene, int Amount, int BalanceAfter, string? Remark, DateTime CreatedAt);
+
+    /// <summary>礼品订单条目（含收货信息，商家发货用）</summary>
+    public record GiftOrderItem(Guid Id, string ItemName, int PointsSpent, int ShipStatus,
+        string? ReceiverName, string? ReceiverPhone, string? ReceiverAddress,
+        string? ShipTracking, DateTime? ShippedAt, DateTime? ReceivedAt, DateTime CreatedAt);
+
+    /// <summary>挂礼申请代理请求体</summary>
+    public record CreateGiftProxyRequest(string Name, string Description, string? ImageKey, int Stock);
+
+    /// <summary>挂礼申请/下架/发货响应（data 载荷为 {id} 或空）</summary>
+    public record CreateGiftProxyResponse(Guid? Id);
+
+    /// <summary>金库账户响应（data 载荷）</summary>
+    public record MerchantTreasuryResponse(int Balance, int TotalEarned, int TotalSpent);
+
+    /// <summary>发货代理请求体</summary>
+    public record ShipGiftProxyRequest(string? Tracking);
+
+    /// <summary>礼品图上传响应</summary>
+    public record GiftImageResult(string? Url);
 
     /// <summary>
     /// 从入站请求提取用户 access token（与 MeEndpoints 同逻辑）
