@@ -714,7 +714,9 @@ public static class MerchantEndpoints
         Guid Id, string Name, string? CompanyName, string? Type,
         string? ContactPerson, string? Phone, string? Mobile, string? Email, string? Address,
         bool IsVerified, string? Status, string? Grade,
-        int FollowerCount, int ProductCount, string? LogoUrl);
+        int FollowerCount, int ProductCount, string? LogoUrl,
+        // v2.5.0 工会经济：等级中文展示名透传（入驻/认证/活跃供给/金牌），置于尾部带缺省防位置错位
+        string? GradeDisplay = null);
 
     public record MerchantBearingItem(
         Guid BearingId, string BearingPartNumber, string? OldNumber,
