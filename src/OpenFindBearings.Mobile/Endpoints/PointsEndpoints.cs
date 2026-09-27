@@ -96,9 +96,9 @@ public static class PointsEndpoints
         .RequireAuthorization();
 
         /// <summary>
-        /// 工会福利卡（v2.5.0 工会经济）：成员最佳工会等级/福利清单/升级提示，散人为空
+        /// 商家福利卡（v2.5.0 商家经济）：成员最佳商家等级/福利清单/升级提示，散人为空
         /// </summary>
-        group.MapGet("/guild-buff", async (
+        group.MapGet("/merchant-buff", async (
             ApiClient api,
             HttpContext http,
             CancellationToken ct) =>
@@ -106,11 +106,47 @@ public static class PointsEndpoints
             var token = GetToken(http);
             if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
 
-            var result = await api.GetAsync<GuildBuffResponse>("/api/points/guild-buff", token, ct);
-            return Results.Ok(result ?? new GuildBuffResponse(null, null, 0, 0, new List<string>(), ""));
+            var result = await api.GetAsync<MerchantBuffResponse>("/api/points/merchant-buff", token, ct);
+            return Results.Ok(result ?? new MerchantBuffResponse(null, null, 0, 0, new List<string>(), ""));
         })
-        .WithName("GetGuildBuff")
-        .WithSummary("工会福利卡")
+        .WithName("GetMerchantBuff")
+        .WithSummary("商家福利卡")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 商家集体任务板（v2.6.0 M3）：最佳商家的周期任务进度与完成态（透传，散人为空清单）
+        /// </summary>
+        group.MapGet("/merchant-tasks", async (
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+
+            var result = await api.GetAsync<MerchantTasksResponse>("/api/points/merchant-tasks", token, ct);
+            return Results.Ok(result ?? new MerchantTasksResponse(null, null, new List<MerchantTaskItem>(), 0));
+        })
+        .WithName("GetMerchantTasks")
+        .WithSummary("商家集体任务板")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 商家实力月榜（v2.6.0 M3）：本月金库入账 TOP 榜 + 我的商家回显（透传）
+        /// </summary>
+        group.MapGet("/merchant-ranking", async (
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+
+            var result = await api.GetAsync<MerchantRankingResponse>("/api/points/merchant-ranking", token, ct);
+            return Results.Ok(result ?? new MerchantRankingResponse("", new List<MerchantRankItem>(), null));
+        })
+        .WithName("GetMerchantRanking")
+        .WithSummary("商家实力月榜")
         .RequireAuthorization();
     }
 
@@ -146,6 +182,19 @@ public static class PointsEndpoints
         bool Daily,
         bool Done);
 
-    /// <summary>工会福利卡（透传 API /api/points/guild-buff，v2.5.0）</summary>
-    public record GuildBuffResponse(Guid? GuildId, string? GuildName, int Grade, int Rank, List<string> Labels, string NextHint);
+    /// <summary>商家福利卡（透传 API /api/points/merchant-buff，v2.5.0）</summary>
+    public record MerchantBuffResponse(Guid? MerchantId, string? MerchantName, int Grade, int Rank, List<string> Labels, string NextHint);
+
+    /// <summary>集体任务板响应（透传 API /api/points/merchant-tasks，v2.6.0）</summary>
+    public record MerchantTasksResponse(Guid? MerchantId, string? MerchantName, List<MerchantTaskItem> Tasks, int CompletedTotal);
+
+    /// <summary>集体任务项（period 1 周/2 月；rewardType 1 成员/2 金库；done=本周期已达成）</summary>
+    public record MerchantTaskItem(string TaskKey, string Name, string Description,
+        int Target, int Current, int Period, int RewardType, int RewardAmount, bool Done);
+
+    /// <summary>商家实力月榜响应（透传 API /api/points/merchant-ranking，v2.6.0）</summary>
+    public record MerchantRankingResponse(string PeriodKey, List<MerchantRankItem> Top, MerchantRankItem? Mine);
+
+    /// <summary>榜单行（rank=0 表示未进前 100 单独回显）</summary>
+    public record MerchantRankItem(int Rank, Guid MerchantId, string MerchantName, string GradeDisplay, int Total);
 }

@@ -336,7 +336,7 @@ public static class MerchantManageEndpoints
         .DisableAntiforgery()
         .RequireAuthorization();
 
-        // ===== v2.4.0 工会经济：商家金库与挂礼代理（全部依赖 X-Merchant-Id 上下文，ApiClient 自动透传） =====
+        // ===== v2.4.0 商家经济：商家金库与挂礼代理（全部依赖 X-Merchant-Id 上下文，ApiClient 自动透传） =====
 
         /// <summary>金库账户（余额/累计，仅管理员）</summary>
         group.MapGet("/treasury", async (ApiClient api, HttpContext http, CancellationToken ct) =>
