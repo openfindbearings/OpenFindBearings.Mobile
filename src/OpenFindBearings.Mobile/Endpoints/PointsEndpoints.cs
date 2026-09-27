@@ -96,17 +96,20 @@ public static class PointsEndpoints
         .RequireAuthorization();
 
         /// <summary>
-        /// 商家福利卡（v2.5.0 商家经济）：成员最佳商家等级/福利清单/升级提示，散人为空
+        /// 商家福利卡（v2.5.0 商家经济）：最佳商家等级/福利清单/升级提示，散人为空；
+        /// 改动说明（v2.6.0 任务中心拆分）：merchantId 可选透传（商家管理页"本店视角"）
         /// </summary>
         group.MapGet("/merchant-buff", async (
             ApiClient api,
             HttpContext http,
-            CancellationToken ct) =>
+            CancellationToken ct,
+            Guid? merchantId) =>
         {
             var token = GetToken(http);
             if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
 
-            var result = await api.GetAsync<MerchantBuffResponse>("/api/points/merchant-buff", token, ct);
+            var path = merchantId.HasValue ? $"/api/points/merchant-buff?merchantId={merchantId}" : "/api/points/merchant-buff";
+            var result = await api.GetAsync<MerchantBuffResponse>(path, token, ct);
             return Results.Ok(result ?? new MerchantBuffResponse(null, null, 0, 0, new List<string>(), ""));
         })
         .WithName("GetMerchantBuff")
@@ -136,17 +139,20 @@ public static class PointsEndpoints
         .RequireAuthorization();
 
         /// <summary>
-        /// 商家实力月榜（v2.6.0 M3）：本月金库入账 TOP 榜 + 我的商家回显（透传）
+        /// 商家实力月榜（v2.6.0 M3）：TOP 榜 + 我的商家回显（透传）；
+        /// 改动说明（v2.6.0 任务中心拆分）：merchantId 可选透传（商家管理页"本店名次"视角）
         /// </summary>
         group.MapGet("/merchant-ranking", async (
             ApiClient api,
             HttpContext http,
-            CancellationToken ct) =>
+            CancellationToken ct,
+            Guid? merchantId) =>
         {
             var token = GetToken(http);
             if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
 
-            var result = await api.GetAsync<MerchantRankingResponse>("/api/points/merchant-ranking", token, ct);
+            var path = merchantId.HasValue ? $"/api/points/merchant-ranking?merchantId={merchantId}" : "/api/points/merchant-ranking";
+            var result = await api.GetAsync<MerchantRankingResponse>(path, token, ct);
             return Results.Ok(result ?? new MerchantRankingResponse("", new List<MerchantRankItem>(), null));
         })
         .WithName("GetMerchantRanking")

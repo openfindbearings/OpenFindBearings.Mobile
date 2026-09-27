@@ -723,8 +723,8 @@ public static class MerchantEndpoints
         int FollowerCount, int ProductCount, string? LogoUrl,
         // v2.5.0 商家经济：等级中文展示名透传（入驻/认证/活跃供给/金牌），置于尾部带缺省防位置错位
         string? GradeDisplay = null,
-        // v2.6.0 商家主页：成员标记/角色（登录+在职成员才有值）与集体任务累计达成数（勋章园卡通关史）
-        bool IsMerchantMember = false, string? MemberRole = null, int CompletedTaskCount = 0);
+        // v2.6.0 商家主页：成员标记（"进入管理"横幅）与集体任务累计达成数（勋章园卡通关史）
+        bool IsMerchantMember = false, int CompletedTaskCount = 0);
 
     public record MerchantBearingItem(
         Guid BearingId, string BearingPartNumber, string? OldNumber,
