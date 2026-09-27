@@ -7,7 +7,7 @@ namespace OpenFindBearings.Mobile.Endpoints;
 public record MallItemResponse(
     Guid Id, string Key, string Name, string Description, string Icon, int Category,
     int Price, int? OriginalPrice, bool Flashing, DateTime? FlashEnd,
-    int? DurationHours, int Stock, int SoldCount, bool SoldOut);
+    int? DurationHours, int Stock, int SoldCount, bool SoldOut, string? OwnerMerchantName);
 
 /// <summary>商城目录（含余额，供前端三态按钮）</summary>
 public record MallCatalogResponse(
@@ -20,10 +20,18 @@ public record MallRedeemResponse(Guid? OrderId, int PointsSpent, DateTime? Pinne
 /// <summary>兑换订单条目（BFF 透传 API /api/mall/orders items）</summary>
 public record MallOrderResponse(
     Guid Id, string ItemKey, string ItemName, int PointsSpent, int Status,
-    string? Remark, DateTime CreatedAt, DateTime? FulfilledAt);
+    string? Remark, DateTime CreatedAt, DateTime? FulfilledAt,
+    // v2.4.0 实物礼品物流态（虚拟权益恒 0）
+    int ShipStatus = 0, string? ShipTracking = null, DateTime? ShippedAt = null, DateTime? ReceivedAt = null);
 
 /// <summary>兑换请求体（BFF → API）</summary>
-public record MallRedeemRequest(Guid ItemId, Guid? TargetRef, string? RequestId);
+public record MallRedeemRequest(Guid ItemId, Guid? TargetRef, string? RequestId, bool UseTreasury = false);
+
+/// <summary>礼品兑换请求体（收货三件套必填，v2.4.0 托管扣款）</summary>
+public record MallRedeemGiftRequest(Guid ItemId, string ReceiverName, string ReceiverPhone, string ReceiverAddress, string? RequestId);
+
+/// <summary>确认收货响应（结算入商家金库的分值）</summary>
+public record MallConfirmResponse(int Settled);
 
 /// <summary>
 /// 商城代理端点（/mobile/mall/*，v2.3.0 商城虚拟权益）
@@ -59,7 +67,7 @@ public static class MallEndpoints
             if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
 
             var call = await api.PostWithResultAsync<MallRedeemResponse>(
-                "/api/mall/redeem", new { itemId = req.ItemId, targetRef = req.TargetRef, requestId = req.RequestId }, token, ct);
+                "/api/mall/redeem", new { itemId = req.ItemId, targetRef = req.TargetRef, requestId = req.RequestId, useTreasury = req.UseTreasury }, token, ct);
             if (!call.Success || call.Data == null)
             {
                 var msg = call.ErrorText ?? "兑换失败，请稍后重试";
@@ -86,6 +94,35 @@ public static class MallEndpoints
         })
         .WithName("GetMallOrders")
         .WithSummary("我的兑换订单")
+        .RequireAuthorization();
+
+        /// <summary>实物礼品兑换（v2.4.0 托管扣款；失败原因透传）</summary>
+        group.MapPost("/redeem-gift", async (MallRedeemGiftRequest req, ApiClient api, HttpContext http, CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var call = await api.PostWithResultAsync<MallRedeemResponse>("/api/mall/redeem-gift",
+                new { itemId = req.ItemId, receiverName = req.ReceiverName, receiverPhone = req.ReceiverPhone, receiverAddress = req.ReceiverAddress, requestId = req.RequestId }, token, ct);
+            if (!call.Success || call.Data == null)
+                return Results.Json(new { success = false, message = call.ErrorText ?? "兑换失败" }, statusCode: 400);
+            return Results.Ok(call.Data);
+        })
+        .WithName("RedeemMallGiftProxy")
+        .WithSummary("礼品兑换")
+        .RequireAuthorization();
+
+        /// <summary>确认收货（买家；触发商家金库结算）</summary>
+        group.MapPost("/orders/{id}/confirm-receipt", async (Guid id, ApiClient api, HttpContext http, CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var call = await api.PostWithResultAsync<MallConfirmResponse>($"/api/mall/orders/{id}/confirm-receipt", new { }, token, ct);
+            return call.Success
+                ? Results.Ok(new { success = true, settled = call.Data?.Settled ?? 0 })
+                : Results.Json(new { success = false, message = call.ErrorText ?? "操作失败" }, statusCode: 400);
+        })
+        .WithName("ConfirmMallReceiptProxy")
+        .WithSummary("确认收货")
         .RequireAuthorization();
     }
 
