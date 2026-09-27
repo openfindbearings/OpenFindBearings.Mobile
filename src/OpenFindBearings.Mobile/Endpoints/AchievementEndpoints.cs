@@ -7,7 +7,8 @@ namespace OpenFindBearings.Mobile.Endpoints;
 public record AchievementItemResponse(
     string Key, string Name, string Description, string Icon, string Category,
     int Scope, int Target, int Progress, bool Unlocked, DateTime? UnlockedAt,
-    bool Rare, bool Hidden, int MetaPoints, string? TitleReward, string? ImageKey);
+    bool Rare, bool Hidden, int MetaPoints, string? TitleReward, string? ImageKey,
+    bool IsLimited = false, int? LimitedOrdinal = null);
 
 /// <summary>成就墙视图（BFF 透传 API AchievementWallView）</summary>
 public record AchievementWallResponse(
@@ -67,7 +68,41 @@ public static class AchievementEndpoints
         })
         .WithName("GetMerchantAchievements")
         .WithSummary("商户徽章排");
+
+        /// <summary>我的称号列表与当前佩戴（v2.8.0 称号系统：选择佩戴数据源）</summary>
+        group.MapGet("/titles", async (ApiClient api, HttpContext http, CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var result = await api.GetAsync<MyTitlesResponse>("/api/achievements/titles", token, ct);
+            return result == null
+                ? Results.Json(new { success = false, message = "称号加载失败" }, statusCode: 502)
+                : Results.Ok(result);
+        })
+        .WithName("GetMyTitles")
+        .WithSummary("我的称号与佩戴")
+        .RequireAuthorization();
+
+        /// <summary>佩戴/卸下称号（v2.8.0；Title 空白=卸下）</summary>
+        group.MapPut("/title", async (EquipTitleRequest body, ApiClient api, HttpContext http, CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var result = await api.PutAsync<object>("/api/achievements/title", body, token, ct);
+            return result == null
+                ? Results.Json(new { success = false, message = "称号设置失败" }, statusCode: 502)
+                : Results.Ok(result);
+        })
+        .WithName("EquipTitle")
+        .WithSummary("佩戴/卸下称号")
+        .RequireAuthorization();
     }
+
+    /// <summary>我的称号响应（BFF 透传 API 称号列表）</summary>
+    public record MyTitlesResponse(List<string> Titles, string? EquippedTitle);
+
+    /// <summary>佩戴称号请求体（Title 空白=卸下）</summary>
+    public record EquipTitleRequest(string? Title);
 
     /// <summary>从入站 Authorization 头取用户 access token（缺省 null）</summary>
     private static string? GetToken(HttpContext http)
