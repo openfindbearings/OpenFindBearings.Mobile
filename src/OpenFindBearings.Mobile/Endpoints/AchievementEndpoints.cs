@@ -7,7 +7,7 @@ namespace OpenFindBearings.Mobile.Endpoints;
 public record AchievementItemResponse(
     string Key, string Name, string Description, string Icon, string Category,
     int Scope, int Target, int Progress, bool Unlocked, DateTime? UnlockedAt,
-    bool Rare, bool Hidden, int MetaPoints, string? TitleReward);
+    bool Rare, bool Hidden, int MetaPoints, string? TitleReward, string? ImageKey);
 
 /// <summary>成就墙视图（BFF 透传 API AchievementWallView）</summary>
 public record AchievementWallResponse(
