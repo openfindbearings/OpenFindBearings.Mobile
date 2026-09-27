@@ -384,3 +384,6 @@ src/OpenFindBearings.Mobile/
   DTO MerchantTasksResponse{MerchantId,MerchantName,Tasks[],CompletedTotal} + MerchantTaskItem）。
 - 商家实力月榜：GET /mobile/points/merchant-ranking -> /api/points/merchant-ranking（token 透传；
   DTO MerchantRankingResponse{PeriodKey,Top[],Mine?} + MerchantRankItem，rank=0 未上榜）。
+
+- 商家主页批次：GET /mobile/merchants/{id} 登录时透传 token（详情返回成员标记/角色）；MerchantDetail DTO 尾部补
+  IsMerchantMember/MemberRole/CompletedTaskCount 三可选字段；/mobile/points/merchant-tasks 支持 merchantId 查询参数透传。

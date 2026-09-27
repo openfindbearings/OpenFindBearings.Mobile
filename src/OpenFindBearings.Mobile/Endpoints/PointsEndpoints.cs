@@ -114,17 +114,21 @@ public static class PointsEndpoints
         .RequireAuthorization();
 
         /// <summary>
-        /// 商家集体任务板（v2.6.0 M3）：最佳商家的周期任务进度与完成态（透传，散人为空清单）
+        /// 商家集体任务板（v2.6.0 M3）：周期任务进度与完成态（透传，散人为空清单）；
+        /// 改动说明（v2.6.0 商家主页）：merchantId 可选透传——商家主页成员区按所属商家查询，
+        /// 缺省仍走 API 最佳商户口径（任务中心卡）
         /// </summary>
         group.MapGet("/merchant-tasks", async (
             ApiClient api,
             HttpContext http,
-            CancellationToken ct) =>
+            CancellationToken ct,
+            Guid? merchantId) =>
         {
             var token = GetToken(http);
             if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
 
-            var result = await api.GetAsync<MerchantTasksResponse>("/api/points/merchant-tasks", token, ct);
+            var path = merchantId.HasValue ? $"/api/points/merchant-tasks?merchantId={merchantId}" : "/api/points/merchant-tasks";
+            var result = await api.GetAsync<MerchantTasksResponse>(path, token, ct);
             return Results.Ok(result ?? new MerchantTasksResponse(null, null, new List<MerchantTaskItem>(), 0));
         })
         .WithName("GetMerchantTasks")
