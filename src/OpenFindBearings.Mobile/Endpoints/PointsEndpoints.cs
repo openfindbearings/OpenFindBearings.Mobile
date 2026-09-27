@@ -170,8 +170,8 @@ public static class PointsEndpoints
     public record PointAccountResponse(int Balance, int TotalEarned, int TotalSpent, bool TodayCheckedIn, int ConsecutiveDays, int? TzOffsetHours, int Level = 1, string? LevelName = null);
 
     /// <summary>签到结果（对齐 API CheckinResult）</summary>
-    // v2.1.0 成就子系统：透传本次签到新点亮的成就键（供 Taro toast）
-    public record CheckinResponse(int Amount, int ConsecutiveDays, bool AlreadyCheckedIn, string[]? UnlockedAchievements = null);
+    // v2.1.0 成就子系统：透传本次签到新点亮的成就键（供 Taro toast）；v2.8.0 G1 暴击倍数
+    public record CheckinResponse(int Amount, int ConsecutiveDays, bool AlreadyCheckedIn, string[]? UnlockedAchievements = null, int CritMultiplier = 1);
 
     /// <summary>流水项（对齐 API /api/points/transactions items）</summary>
     public record PointTransactionItem(
