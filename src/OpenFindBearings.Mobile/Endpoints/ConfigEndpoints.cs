@@ -65,7 +65,9 @@ public static class ConfigEndpoints
         string DownloadUrl,
         bool ForceUpdate,
         // 改动说明：新增媒体源 base，透传 API 的 Mobile.MediaBaseUrl 供前端 getMediaBase 运行时覆盖
-        string MediaBaseUrl);
+        string MediaBaseUrl,
+        // 改动说明（v2.10.0 商家金）：商品置顶个人代付汇率透传（Taro 支付面板展示折算价）
+        int MerchantGoldPayRate = 2);
 
     /// <summary>版本检查结果（与 API VersionCheckResult 对应）</summary>
     public record VersionCheckDto(
