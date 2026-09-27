@@ -26,7 +26,7 @@ public static class PointsEndpoints
             if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
 
             var result = await api.GetAsync<PointAccountResponse>("/api/points/account", token, ct);
-            return Results.Ok(result ?? new PointAccountResponse(0, 0, 0, false, 0, null));
+            return Results.Ok(result ?? new PointAccountResponse(0, 0, 0, false, 0, null, 1, null));
         })
         .WithName("GetPointAccount")
         .WithSummary("积分账户概览")
@@ -166,7 +166,8 @@ public static class PointsEndpoints
     /// <summary>账户概览响应（对齐 API /api/points/account）</summary>
     // 时间治理批次：透传 API 下发的业务日界偏移（可空=旧 API 无此字段，前端按 +8 兜底），
     //   防管理员调整 BusinessClock 配置后前端硬编码 +8 与后端日界漂移
-    public record PointAccountResponse(int Balance, int TotalEarned, int TotalSpent, bool TodayCheckedIn, int ConsecutiveDays, int? TzOffsetHours);
+    // v2.7.0 G7：透传用户积分等级（level 数字 + levelName 名称）
+    public record PointAccountResponse(int Balance, int TotalEarned, int TotalSpent, bool TodayCheckedIn, int ConsecutiveDays, int? TzOffsetHours, int Level = 1, string? LevelName = null);
 
     /// <summary>签到结果（对齐 API CheckinResult）</summary>
     // v2.1.0 成就子系统：透传本次签到新点亮的成就键（供 Taro toast）
