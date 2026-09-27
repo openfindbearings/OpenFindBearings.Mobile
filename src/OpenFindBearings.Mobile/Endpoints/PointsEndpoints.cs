@@ -105,7 +105,8 @@ public static class PointsEndpoints
     public record PointAccountResponse(int Balance, int TotalEarned, int TotalSpent, bool TodayCheckedIn, int ConsecutiveDays, int? TzOffsetHours);
 
     /// <summary>签到结果（对齐 API CheckinResult）</summary>
-    public record CheckinResponse(int Amount, int ConsecutiveDays, bool AlreadyCheckedIn);
+    // v2.1.0 成就子系统：透传本次签到新点亮的成就键（供 Taro toast）
+    public record CheckinResponse(int Amount, int ConsecutiveDays, bool AlreadyCheckedIn, string[]? UnlockedAchievements = null);
 
     /// <summary>流水项（对齐 API /api/points/transactions items）</summary>
     public record PointTransactionItem(
