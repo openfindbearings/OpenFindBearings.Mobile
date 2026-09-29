@@ -96,13 +96,30 @@ jobs:
     needs: deploy
     runs-on: ubuntu-latest
     steps:
-      - name: 清理 GHCR 旧镜像版本（保留最近 5 个）
-        # 改动说明（2026-09-29）：GITHUB_TOKEN 仅能删本仓库关联推送的版本，历史遗留（旧仓库名时期推送）
-        # 版本会 403 Resource not accessible——不阻塞发布，余量在 org Packages 网页端手动清
+      - name: 清理 GHCR 旧镜像版本（tag 版本留最新 5 个 + 无标签缓存留最新 10 个）
+        # 改动说明（2026-09-29）：弃用 delete-package-versions action——其"保留最新N"按时间戳
+        # 把 untagged 缓存版本混入计数抢名额，且从最老删起遇 403（旧仓库时期推送的遗留版本）即
+        # 整体中止，实测导致清理完全失效。改为 gh api 逐个删除：tag 与 untagged 分开计数保留，
+        # 单个 403 仅跳过告警不中断，整步容错不阻塞发布
         continue-on-error: true
-        uses: actions/delete-package-versions@v5
-        with:
-          package-name: 'openfindbearings-mobile'
-          package-type: container
-          min-versions-to-keep: 5
-          token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PKGS: "openfindbearings-mobile"
+        run: |
+          for pkg in $PKGS; do
+            echo "== 清理容器包: $pkg =="
+            gh api "/users/${{ github.repository_owner }}/packages/container/$pkg/versions?per_page=100" --paginate > versions.json || { echo "获取版本列表失败，跳过 $pkg"; continue; }
+            # 保留规则：tag 版本按时间倒序留最新 5 个；untagged 缓存版本留最新 10 个；其余删除
+            jq -r '
+              def keep(n): sort_by(.created_at) | reverse | to_entries
+                | map(select(.key >= n) | .value.id);
+              (map(select((.metadata.container.tags // []) | length > 0)) | keep(5)) +
+              (map(select((.metadata.container.tags // []) | length == 0)) | keep(10))
+              | .[]' versions.json > delete_ids.txt
+            total=$(wc -l < delete_ids.txt)
+            echo "待删除版本数: $total"
+            while read -r id; do
+              gh api -X DELETE "/users/${{ github.repository_owner }}/packages/container/$pkg/versions/$id" 2>/dev/null \
+                || echo "跳过 $id（本仓库 token 无权限的历史版本，可在 org Packages 网页端手动清）"
+            done < delete_ids.txt
+          done
