@@ -111,12 +111,12 @@ jobs:
           for pkg in $PKGS; do
             echo "== 清理容器包: $pkg =="
             gh api "/users/${{ github.repository_owner }}/packages/container/$pkg/versions?per_page=100" --paginate > versions.json || { echo "获取版本列表失败，跳过 $pkg"; continue; }
-            # 保留规则：tag 版本按时间倒序留最新 5 个；untagged 缓存版本留最新 10 个；其余删除
+            # 保留规则：tag 版本按时间倒序留最新 5 个；untagged 缓存版本留最新 2 个（上一次构建的缓存供下次复用）；其余删除
             jq -r '
               def keep(n): sort_by(.created_at) | reverse | to_entries
                 | map(select(.key >= n) | .value.id);
               (map(select((.metadata.container.tags // []) | length > 0)) | keep(5)) +
-              (map(select((.metadata.container.tags // []) | length == 0)) | keep(10))
+              (map(select((.metadata.container.tags // []) | length == 0)) | keep(2))
               | .[]' versions.json > delete_ids.txt
             total=$(wc -l < delete_ids.txt)
             echo "待删除版本数: $total"
