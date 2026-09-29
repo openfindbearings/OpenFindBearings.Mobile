@@ -95,6 +95,8 @@ jobs:
   cleanup-old-images:
     needs: deploy
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
     steps:
       - name: 清理 GHCR 旧镜像版本（tag 版本留最新 5 个 + 无标签缓存留最新 10 个）
         # 改动说明（2026-09-29）：弃用 delete-package-versions action——其"保留最新N"按时间戳
