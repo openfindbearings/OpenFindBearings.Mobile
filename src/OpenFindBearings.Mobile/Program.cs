@@ -29,6 +29,18 @@ builder.Services.AddHttpClient("Identity", client =>
     client.DefaultRequestHeaders.Accept.Add(new("application/json"));
 });
 
+// HttpClient：调用 FindBearings.Sync（v1.10.0 库存导入编排改造——文件流由 BFF 判权后直传 Sync，
+// API 不再中转；Bearer 为用户 token 逐请求附加，Sync 受众校验接受 openfindbearings-api）。
+// 基址未配置（ApiUrls:FindBearingsSync 为空=公开版未部署 Sync）时不设 BaseAddress，
+// 端点侧显式检测并返回可读错误；超时放宽至 150s 覆盖大 Excel 上传
+builder.Services.AddHttpClient("Sync", client =>
+{
+    var syncBase = builder.Configuration["ApiUrls:FindBearingsSync"];
+    if (!string.IsNullOrWhiteSpace(syncBase))
+        client.BaseAddress = new Uri(syncBase);
+    client.Timeout = TimeSpan.FromSeconds(150);
+});
+
 // 业务服务
 builder.Services.AddScoped<ApiClient>();
 builder.Services.AddScoped<AuthClient>();

@@ -85,6 +85,60 @@ public class ApiClient
     }
 
     /// <summary>
+    /// GET 请求带完整结果（改动说明：镜像 PostWithResultAsync 语义——判权前置类调用需要
+    /// 保留上游状态码与错误文案再决定后续编排，如库存导入 import-context 的 403/404 透传；
+    /// GetAsync 吞状态码只回 null 不满足该场景）
+    /// </summary>
+    public async Task<ApiCallResult<T>> GetWithResultAsync<T>(string path, string? accessToken, CancellationToken ct = default) where T : class
+    {
+        HttpResponseMessage response;
+        try
+        {
+            var client = CreateApiClient(accessToken);
+            response = await client.GetAsync(path, ct);
+        }
+        catch (Exception ex)
+        {
+            // 上游不可达（断网/服务未起）：统一转 502 给前端
+            _logger.LogWarning(ex, "API GET {Path} 连接失败", path);
+            return new ApiCallResult<T>(false, 502, null, "UPSTREAM_UNREACHABLE", "上游服务连接失败，请稍后再试", default);
+        }
+        using (response)
+        {
+            var status = (int)response.StatusCode;
+            var text = await response.Content.ReadAsStringAsync(ct);
+            JsonElement bodyJson = default;
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                try { bodyJson = JsonDocument.Parse(text).RootElement.Clone(); }
+                catch (JsonException) { /* 非 JSON 体（如网关 HTML），保持默认 ErrorText 兜底 */ }
+            }
+            var errCode = GetExtFromBody(bodyJson, "code");
+            var errText = GetExtFromBody(bodyJson, "detail")
+                       ?? GetExtFromBody(bodyJson, "message")
+                       ?? GetExtFromBody(bodyJson, "title");
+            if (response.IsSuccessStatusCode)
+            {
+                T? data = null;
+                if (bodyJson.ValueKind == JsonValueKind.Object)
+                {
+                    try
+                    {
+                        var wrapper = JsonSerializer.Deserialize<ApiResponseWrapper<T>>(bodyJson.GetRawText(), JsonOptions);
+                        data = wrapper?.Data;
+                    }
+                    catch (JsonException ex)
+                    {
+                        _logger.LogWarning(ex, "API GET {Path} 响应解析失败", path);
+                    }
+                }
+                return new ApiCallResult<T>(true, status, data, null, null, bodyJson);
+            }
+            return new ApiCallResult<T>(false, status, null, errCode, errText ?? "上游返回错误", bodyJson);
+        }
+    }
+
+    /// <summary>
     /// POST 请求
     /// </summary>
     public async Task<T?> PostAsync<T>(string path, object body, string? accessToken = null, CancellationToken ct = default) where T : class
