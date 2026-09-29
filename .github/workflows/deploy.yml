@@ -97,6 +97,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 清理 GHCR 旧镜像版本（保留最近 5 个）
+        # 改动说明（2026-09-29）：GITHUB_TOKEN 仅能删本仓库关联推送的版本，历史遗留（旧仓库名时期推送）
+        # 版本会 403 Resource not accessible——不阻塞发布，余量在 org Packages 网页端手动清
+        continue-on-error: true
         uses: actions/delete-package-versions@v5
         with:
           package-name: 'openfindbearings-mobile'
