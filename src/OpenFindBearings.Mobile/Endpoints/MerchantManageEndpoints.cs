@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using OpenFindBearings.Mobile.Services;
@@ -137,10 +138,16 @@ public static class MerchantManageEndpoints
 
         /// <summary>
         /// Excel 批量导入在售商品（仅商户管理员）
+        /// 改动说明（v1.10.0 架构调整）：原"BFF→API→Sync"中转链废弃（API 不再直连 Sync），
+        /// 改为 BFF 编排两步：① 调 API import-context 判权拿权威 merchantId（商家权限属 API 领域）
+        /// ② 用户 Bearer 直传 Sync /api/inventory/import（文件流不再经 API）。
+        /// merchantId 用 API 返回值而非请求头原样值，防伪造头越权导入他店
         /// </summary>
         group.MapPost("/inventory/import", async (
             IFormFile file,
             ApiClient api,
+            IHttpClientFactory httpClientFactory,
+            IConfiguration config,
             HttpContext http,
             CancellationToken ct) =>
         {
@@ -149,21 +156,48 @@ public static class MerchantManageEndpoints
             if (file == null || file.Length == 0)
                 return Results.BadRequest(new { success = false, message = "请选择文件" });
 
-            // 改动说明（v1.6.2）：上游失败原因透传（UploadAsync 非 2xx 抛 UpstreamUploadException）
+            // 公开版未部署 Sync：基址为空时给可读错误（与 BFF 其余上游故障透传同形态）
+            if (string.IsNullOrWhiteSpace(config["ApiUrls:FindBearingsSync"]))
+                return Results.Ok(new { success = false, message = "本部署未配置数据管线服务，库存导入不可用" });
+
+            // 第一步：API 判权（403=非管理员、404=无当前商户上下文，状态与文案原样透传）
+            var ctx = await api.GetWithResultAsync<InventoryImportContext>(
+                "/api/merchant/inventory/import-context", token, ct);
+            if (!ctx.Success || ctx.Data is null)
+            {
+                return Results.Ok(new { success = false, message = ctx.ErrorText ?? "库存导入判权失败" });
+            }
+
+            // 第二步：文件直传 Sync（Bearer=用户 token，Sync 受众校验接受 openfindbearings-api 令牌）
             try
             {
-                await api.UploadAsync<object>(
-                    "/api/merchant/inventory/import", file.OpenReadStream(), file.FileName, file.ContentType, token, ct);
-                return Results.Ok(new { success = true, message = "导入处理完成" });
+                using var form = new MultipartFormDataContent();
+                var fileContent = new StreamContent(file.OpenReadStream());
+                if (!string.IsNullOrEmpty(file.ContentType))
+                    fileContent.Headers.ContentType = new(file.ContentType);
+                form.Add(fileContent, "file", file.FileName);
+
+                var syncClient = httpClientFactory.CreateClient("Sync");
+                syncClient.DefaultRequestHeaders.Authorization = new("Bearer", token);
+                var resp = await syncClient.PostAsync(
+                    $"/api/inventory/import?merchantId={ctx.Data.MerchantId}", form, ct);
+                var bodyText = await resp.Content.ReadAsStringAsync(ct);
+
+                if (!resp.IsSuccessStatusCode)
+                {
+                    return Results.Ok(new { success = false, message = $"Sync 返回 {resp.StatusCode}" });
+                }
+                // Sync 成功响应体（含 totalRows/succeeded/failed 统计）原样回传，Taro 侧解析逻辑不变
+                return Results.Content(bodyText, "application/json");
             }
-            catch (ApiClient.UpstreamUploadException ex)
+            catch (Exception ex)
             {
-                return Results.Ok(new { success = false, message = ex.Message });
+                return Results.Ok(new { success = false, message = $"导入失败：{ex.Message}" });
             }
         })
         .WithName("ImportMerchantInventory")
         .WithSummary("Excel 批量导入在售商品")
-        .WithDescription("上传 Excel 批量导入在售商品（需商户管理员权限）")
+        .WithDescription("上传 Excel 批量导入在售商品（BFF 编排：API 判权 + Sync 解析入库）")
         // 改动说明（v1.6.2）：IFormFile 绑定自动附加 anti-forgery 元数据，BFF 无 UseAntiforgery 中间件即 500——纯 Bearer API 显式关闭
         .DisableAntiforgery()
         .RequireAuthorization();
@@ -548,6 +582,12 @@ public static class MerchantManageEndpoints
         string? Name, string? CompanyName, string? EnglishName, string? UnifiedSocialCreditCode,
         int? Type, string? Description, string? BusinessScope, string? LogoUrl, string? Website,
         string? ContactPerson, string? Phone, string? Mobile, string? Email, string? Address);
+
+    /// <summary>
+    /// 库存导入判权结果（对齐 API /api/merchant/inventory/import-context 的 merchantId 返回，
+    /// v1.10.0：BFF 拿服务端权威 merchantId 直传 Sync，防客户端伪造 X-Merchant-Id 越权）
+    /// </summary>
+    public record InventoryImportContext(Guid MerchantId);
 
     /// <summary>API Logo 上传响应 {url}</summary>
     public record LogoUrlResult(string? Url);
