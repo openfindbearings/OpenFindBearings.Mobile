@@ -5,9 +5,10 @@ namespace OpenFindBearings.Mobile.Services;
 
 /// <summary>
 /// 调用 Identity 认证服务的 HTTP 客户端封装。
-/// 处理注册、密码/短信登录、刷新令牌、发送验证码；
+/// 处理密码/短信登录、刷新令牌、发送验证码、修改密码；
 /// 统一附加 OAuth 公共参数（client_id/realm/scope），并把 Identity 的失败响应解析为结构化结果，
 /// 不再简单吞成 null，便于端点层映射明确错误码给移动端。
+/// 改动说明（短信登录上线）：/register 端点下线，SignUpAsync 随之删除，全面走"验证码登录即注册"。
 /// </summary>
 public class AuthClient
 {
@@ -38,47 +39,6 @@ public class AuthClient
         _httpClientFactory = httpClientFactory;
         _logger = logger;
         _configuration = configuration;
-    }
-
-    /// <summary>
-    /// 注册：调用 Identity 的匿名 signup 端点创建 OIDC 用户。
-    /// signup 只返回 UserResponse（不含令牌），令牌需随后由 password grant 换取。
-    /// </summary>
-    public async Task<AuthResult> SignUpAsync(string phone, string password, bool agreeTerms, CancellationToken ct = default)
-    {
-        try
-        {
-            var client = _httpClientFactory.CreateClient("Identity");
-            // signup 契约：account 作为用户名（此处为手机号）、confirmPassword 必填、realm 必填、agreeTerms 必须为 true
-            var payload = new
-            {
-                account = phone,
-                password,
-                confirmPassword = password,
-                agreeTerms,
-                realm = Realm
-            };
-            var response = await client.PostAsJsonAsync("/api/account/signup", payload, ct);
-            var body = await response.Content.ReadAsStringAsync(ct);
-            if (response.IsSuccessStatusCode)
-            {
-                return AuthResult.SignUpSuccess();
-            }
-            // 409 视为账号已存在，其余映射为注册失败，均由端点层转成错误码
-            var error = (int)response.StatusCode switch
-            {
-                409 => "USER_EXISTS",
-                400 => "REGISTER_INVALID",
-                _ => "UPSTREAM_ERROR"
-            };
-            _logger.LogWarning("注册失败: status={Status} body={Body}", (int)response.StatusCode, body);
-            return AuthResult.Failure(error, ExtractMessage(body), (int)response.StatusCode);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "注册请求异常");
-            return AuthResult.Failure("UPSTREAM_ERROR", null, 0);
-        }
     }
 
     /// <summary>
@@ -204,6 +164,46 @@ public class AuthClient
     }
 
     /// <summary>
+    /// 修改密码（个人信息页"设置/修改密码"代理）。
+    /// 改动说明（短信登录上线）：验证码登录自动注册的用户没有密码，首次设置时
+    /// currentPassword 允许为空（由 Identity 按"是否已设密码"分支判定）。
+    /// Identity 返回 {success,code,message} 包装，失败时把 message 透传给移动端。
+    /// </summary>
+    public async Task<(bool Success, string? Message)> ChangePasswordAsync(
+        string accessToken,
+        string currentPassword,
+        string newPassword,
+        string confirmNewPassword,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient("Identity");
+            client.DefaultRequestHeaders.Authorization = new("Bearer", accessToken);
+            var response = await client.PostAsJsonAsync("/api/account/me/change-password", new
+            {
+                currentPassword,
+                newPassword,
+                confirmNewPassword
+            }, ct);
+            var body = await response.Content.ReadAsStringAsync(ct);
+            if (response.IsSuccessStatusCode)
+            {
+                // Identity 2xx 也可能是业务失败（success=false），以包装体为准
+                var ok = TryGetSuccess(body);
+                return (ok, ok ? null : ExtractMessage(body) ?? "修改密码失败");
+            }
+            _logger.LogWarning("修改密码失败: status={Status} body={Body}", (int)response.StatusCode, body);
+            return (false, ExtractMessage(body) ?? "修改密码失败");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "修改密码请求异常");
+            return (false, "上游服务异常，请稍后再试");
+        }
+    }
+
+    /// <summary>
     /// 获取用户信息（供 profile 代理使用）。
     /// 改动说明：Identity 统一返回 {success,code,data} 包装，原实现直接反序列化包装体
     /// 导致所有字段恒 null（profile 空白 bug）；现先解包装再取 data，并补齐 nickname/email/pictureUrl
@@ -266,6 +266,21 @@ public class AuthClient
         }
     }
 
+    /// <summary>从 Identity ApiResponse 成败体里读取 success 布尔（缺失视为 false）</summary>
+    private static bool TryGetSuccess(string body)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            return doc.RootElement.TryGetProperty("success", out var s)
+                && s.ValueKind == JsonValueKind.True;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     /// <summary>从 Identity ApiResponse 失败体里尽力提取 message</summary>
     private static string? ExtractMessage(string body)
     {
@@ -311,7 +326,7 @@ public class AuthClient
 }
 
 /// <summary>
-/// 认证调用统一结果：成功携带令牌（或仅注册成功标记），失败携带错误码/描述/上游状态码，
+/// 认证调用统一结果：成功携带令牌，失败携带错误码/描述/上游状态码，
 /// 供端点层映射为明确的移动端错误码，避免把不同失败原因一律吞成 null。
 /// </summary>
 public sealed record AuthResult
@@ -333,9 +348,6 @@ public sealed record AuthResult
 
     /// <summary>令牌换取成功</summary>
     public static AuthResult Ok(AuthClient.TokenResult token) => new(true, token, null, null, 200);
-
-    /// <summary>注册成功（无令牌）</summary>
-    public static AuthResult SignUpSuccess() => new(true, null, null, null, 200);
 
     /// <summary>失败</summary>
     public static AuthResult Failure(string error, string? description, int statusCode)

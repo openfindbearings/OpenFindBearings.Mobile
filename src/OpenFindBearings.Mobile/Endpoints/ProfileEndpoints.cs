@@ -71,6 +71,30 @@ public static class ProfileEndpoints
         .WithSummary("获取用户资料");
 
         /// <summary>
+        /// 设置/修改登录密码（代理 Identity /api/account/me/change-password，透传用户令牌）。
+        /// 改动说明（短信登录上线）：验证码登录自动注册的账号没有密码，首次设置时
+        /// currentPassword 为空；由 Identity 按"是否已设密码"决定是否校验当前密码。
+        /// </summary>
+        group.MapPost("/profile/change-password", async (
+            HttpContext http,
+            AuthClient authClient,
+            ChangePasswordRequest body,
+            CancellationToken ct) =>
+        {
+            var accessToken = GetAccessToken(http);
+            if (string.IsNullOrEmpty(accessToken))
+                return Results.Unauthorized();
+
+            var (ok, message) = await authClient.ChangePasswordAsync(
+                accessToken, body.CurrentPassword ?? "", body.NewPassword, body.ConfirmNewPassword, ct);
+            return ok
+                ? Results.Ok(new { success = true })
+                : Results.Json(new { success = false, code = "CHANGE_PASSWORD_FAILED", message = message ?? "修改密码失败" }, statusCode: 400);
+        })
+        .WithName("ChangePassword")
+        .WithSummary("设置/修改登录密码");
+
+        /// <summary>
         /// 我的收藏轴承。
         /// 改动说明：①补 401 门槛（原缺 token 静默回空页，登录态误判）；
         /// ②DTO 改嵌套形状对齐 API FavoriteBearingDto {id,createdAt,bearing:{...}}
@@ -128,6 +152,11 @@ public static class ProfileEndpoints
     }
 
     // ============ 参数 ============
+
+    /// <summary>
+    /// 修改密码请求（currentPassword 允许为空：无密码账号首次设置，见 ChangePassword 端点说明）。
+    /// </summary>
+    public record ChangePasswordRequest(string? CurrentPassword, string NewPassword, string ConfirmNewPassword);
 
     public class PageQuery
     {
