@@ -13,32 +13,6 @@ public static class AuthEndpoints
     public static void MapAuthEndpoints(this RouteGroupBuilder group)
     {
         /// <summary>
-        /// 注册即登录：先调 Identity signup 建 OIDC 用户，再用 password grant 换令牌。
-        /// 改动说明：Identity signup 不返回令牌，故 BFF 链式两步；agreeTerms 由移动端真实勾选后透传（合规）。
-        /// </summary>
-        group.MapPost("/register", async (
-            RegisterRequest body,
-            AuthClient authClient,
-            CancellationToken ct) =>
-        {
-            // 改动说明：移动端账号即手机号，BFF 层强制格式校验（防任意字符串经 Identity signup
-            // 的"用户名分支"注册出无手机号的账号，也防对任意号段刷码）
-            if (!IsChineseMobile(body.Phone)) return PhoneInvalid();
-
-            var signUp = await authClient.SignUpAsync(body.Phone, body.Password, body.AgreeTerms, ct);
-            if (!signUp.Success)
-            {
-                return MapFailure(signUp, "REGISTER_INVALID");
-            }
-
-            var login = await authClient.LoginAsync(body.Phone, body.Password, body.DeviceId, ct);
-            return login.Success ? Success(login.Token!) : MapFailure(login, "INVALID_CREDENTIALS");
-        })
-        .WithName("Register")
-        .WithSummary("注册并登录")
-        .AllowAnonymous();
-
-        /// <summary>
         /// 密码登录。
         /// </summary>
         group.MapPost("/login", async (
@@ -56,7 +30,7 @@ public static class AuthEndpoints
         .AllowAnonymous();
 
         /// <summary>
-        /// 短信验证码登录/注册（P2 真实通道接入后可用；参数已对齐 phone/code）。
+        /// 短信验证码登录/注册（登录即注册：Identity sms grant 对未注册手机号自动建号）。
         /// </summary>
         group.MapPost("/login-sms", async (
             SmsLoginRequest body,
@@ -155,8 +129,8 @@ public static class AuthEndpoints
     {
         var (code, status) = result.Error switch
         {
-            "USER_EXISTS" => ("USER_EXISTS", 409),
-            "REGISTER_INVALID" => ("REGISTER_INVALID", 400),
+            // 改动说明（短信登录上线）：/register 端点已删除，USER_EXISTS/REGISTER_INVALID 两条
+            // 注册专属映射随之清掉（僵尸分支），登录链路只剩凭据/禁用/上游错误三类
             "invalid_grant" when (result.ErrorDescription ?? "").Contains("not available", StringComparison.OrdinalIgnoreCase)
                 => ("ACCOUNT_DISABLED", 403),
             "invalid_grant" => (fallbackCode, 401),
@@ -169,7 +143,6 @@ public static class AuthEndpoints
     // ============ 参数 ============
 
     public record LoginRequest(string Username, string Password, string DeviceId);
-    public record RegisterRequest(string Phone, string Password, bool AgreeTerms, string DeviceId);
     public record SmsLoginRequest(string Phone, string Code, string DeviceId);
     public record SendCodeRequest(string Phone);
     public record RefreshRequest(string RefreshToken, string DeviceId);
