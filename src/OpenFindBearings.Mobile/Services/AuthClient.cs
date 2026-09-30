@@ -146,14 +146,16 @@ public class AuthClient
     }
 
     /// <summary>
-    /// 发送短信验证码（P2 使用，接口先保留）。
+    /// 发送短信验证码。
+    /// 改动说明（验证码改密）：加 type 参数（login/reset_password 等），
+    /// 空则回落 login——Identity 端 Type 是 [Required]，显式带上默认值避免 400。
     /// </summary>
-    public async Task<bool> SendSmsCodeAsync(string phone, CancellationToken ct = default)
+    public async Task<bool> SendSmsCodeAsync(string phone, string? type = null, CancellationToken ct = default)
     {
         try
         {
             var client = _httpClientFactory.CreateClient("Identity");
-            var response = await client.PostAsJsonAsync("/api/sms/send-code", new { phone }, ct);
+            var response = await client.PostAsJsonAsync("/api/sms/send-code", new { phone, type = type ?? "login" }, ct);
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
@@ -165,13 +167,13 @@ public class AuthClient
 
     /// <summary>
     /// 修改密码（个人信息页"设置/修改密码"代理）。
-    /// 改动说明（短信登录上线）：验证码登录自动注册的用户没有密码，首次设置时
-    /// currentPassword 允许为空（由 Identity 按"是否已设密码"分支判定）。
-    /// Identity 返回 {success,code,message} 包装，失败时把 message 透传给移动端。
+    /// 改动说明（验证码改密）：验证凭据由 currentPassword 换成 verifyCode（Identity
+    /// type=reset_password 一次性消费校验）；Identity 返回 {success,code,message} 包装，
+    /// 失败时把 message 透传给移动端。
     /// </summary>
     public async Task<(bool Success, string? Message)> ChangePasswordAsync(
         string accessToken,
-        string currentPassword,
+        string verifyCode,
         string newPassword,
         string confirmNewPassword,
         CancellationToken ct = default)
@@ -182,7 +184,7 @@ public class AuthClient
             client.DefaultRequestHeaders.Authorization = new("Bearer", accessToken);
             var response = await client.PostAsJsonAsync("/api/account/me/change-password", new
             {
-                currentPassword,
+                verifyCode,
                 newPassword,
                 confirmNewPassword
             }, ct);

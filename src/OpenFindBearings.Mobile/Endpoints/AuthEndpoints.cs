@@ -56,7 +56,9 @@ public static class AuthEndpoints
         {
             if (!IsChineseMobile(body.Phone)) return PhoneInvalid();
 
-            var ok = await authClient.SendSmsCodeAsync(body.Phone, ct);
+            // 改动说明（验证码改密）：type 透传给 Identity（login 默认；改密发码用 reset_password），
+            // 隔离不同用途的验证码，防止登录码被挪用于改密
+            var ok = await authClient.SendSmsCodeAsync(body.Phone, body.Type, ct);
             return ok
                 ? Results.Ok(new { success = true, message = "验证码已发送" })
                 : Results.Json(new { success = false, code = "UPSTREAM_ERROR", message = "发送失败" }, statusCode: 502);
@@ -156,7 +158,7 @@ public static class AuthEndpoints
 
     public record LoginRequest(string Username, string Password, string DeviceId);
     public record SmsLoginRequest(string Phone, string Code, string DeviceId);
-    public record SendCodeRequest(string Phone);
+    public record SendCodeRequest(string Phone, string? Type);
     public record RefreshRequest(string RefreshToken, string DeviceId);
     public record LogoutRequest(string? RefreshToken);
 }
