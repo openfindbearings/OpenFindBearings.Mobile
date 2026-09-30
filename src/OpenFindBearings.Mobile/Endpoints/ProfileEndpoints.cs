@@ -72,8 +72,8 @@ public static class ProfileEndpoints
 
         /// <summary>
         /// 设置/修改登录密码（代理 Identity /api/account/me/change-password，透传用户令牌）。
-        /// 改动说明（短信登录上线）：验证码登录自动注册的账号没有密码，首次设置时
-        /// currentPassword 为空；由 Identity 按"是否已设密码"决定是否校验当前密码。
+        /// 改动说明（验证码改密）：验证方式改为短信验证码 verifyCode（Identity type=reset_password），
+        /// currentPassword 已不被 Identity API 端读取（仅旧包仍可能带上，透传无害）
         /// </summary>
         group.MapPost("/profile/change-password", async (
             HttpContext http,
@@ -86,7 +86,7 @@ public static class ProfileEndpoints
                 return Results.Unauthorized();
 
             var (ok, message) = await authClient.ChangePasswordAsync(
-                accessToken, body.CurrentPassword ?? "", body.NewPassword, body.ConfirmNewPassword, ct);
+                accessToken, body.VerifyCode ?? "", body.NewPassword, body.ConfirmNewPassword, ct);
             return ok
                 ? Results.Ok(new { success = true })
                 : Results.Json(new { success = false, code = "CHANGE_PASSWORD_FAILED", message = message ?? "修改密码失败" }, statusCode: 400);
@@ -156,7 +156,7 @@ public static class ProfileEndpoints
     /// <summary>
     /// 修改密码请求（currentPassword 允许为空：无密码账号首次设置，见 ChangePassword 端点说明）。
     /// </summary>
-    public record ChangePasswordRequest(string? CurrentPassword, string NewPassword, string ConfirmNewPassword);
+    public record ChangePasswordRequest(string? CurrentPassword, string NewPassword, string ConfirmNewPassword, string? VerifyCode);
 
     public class PageQuery
     {
