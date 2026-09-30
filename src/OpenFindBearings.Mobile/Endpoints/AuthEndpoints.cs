@@ -129,6 +129,10 @@ public static class AuthEndpoints
     {
         var (code, status) = result.Error switch
         {
+            // 改动说明（账户不存在提示）：Identity 对"用户不存在"返回可区分的 error_description，
+            // 映射为 USER_NOT_FOUND 404，供移动端提示未注册手机号去走验证码即注册
+            "invalid_grant" when (result.ErrorDescription ?? "").Contains("does not exist", StringComparison.OrdinalIgnoreCase)
+                => ("USER_NOT_FOUND", 404),
             // 改动说明（短信登录上线）：/register 端点已删除，USER_EXISTS/REGISTER_INVALID 两条
             // 注册专属映射随之清掉（僵尸分支），登录链路只剩凭据/禁用/上游错误三类
             "invalid_grant" when (result.ErrorDescription ?? "").Contains("not available", StringComparison.OrdinalIgnoreCase)
@@ -137,7 +141,15 @@ public static class AuthEndpoints
             "UPSTREAM_ERROR" => ("UPSTREAM_ERROR", 502),
             _ => (fallbackCode, 401)
         };
-        return Results.Json(new { success = false, code, message = result.ErrorDescription ?? "请求失败" }, statusCode: status);
+        // 改动说明：把 Identity 英文 error_description 换成移动端可读中文——
+        // 账户不存在引导先注册；密码错误类给出统一模糊文案（不泄露具体原因）
+        var message = code switch
+        {
+            "USER_NOT_FOUND" => "账户不存在，请先验证码方式登录注册",
+            "INVALID_CREDENTIALS" when result.Error == "invalid_grant" => "手机号或密码错误",
+            _ => result.ErrorDescription ?? "请求失败"
+        };
+        return Results.Json(new { success = false, code, message }, statusCode: status);
     }
 
     // ============ 参数 ============
