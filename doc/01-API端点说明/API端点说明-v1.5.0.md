@@ -13,6 +13,7 @@ OpenFindBearings.Mobile 作为移动端 BFF，所有端点统一挂载在 `/mobi
 | 版本 | 日期 | 变更 |
 |------|------|------|
 | v1.5.0 | 2026-09-30 | 新增 `GET /mobile/brands`（品牌字典，匿名，发现页寻货筛选面板数据源，代理 API `/api/brands` 不复用 `/home` 聚合）；寻货 feed 代理契约变更：`GET /mobile/sourcing/demands` 删 `mineOnly`、增 `brand`/`region`/`sort`（对齐 API《02 v1.44.0》《BFF 设计 v1.12.0》；feed 端点此前未入本表明细，此行仅记契约变更） |
+| v1.5.0（同版追加） | 2026-10-01 | 新增 `DELETE /mobile/sourcing/demands/{id}/respond` 撤销应答代理（对齐 API《02 v1.45.0》同版追加 +《BFF 设计 v1.13.0》同版追加）：登录+当前商户，透传 API 云端错误（PROXY_FAIL/上游错误码），`ApiClient` 新增 `DeleteWithResultAsync<T>`；寻货组端点数 +1 |
 | v1.4.0 | 2026-09-16 | 媒体代理退役：删除 `MediaEndpoints.cs` 及 `/mobile/media/**` 注册、`ApiClient.GetRawAsync`、`MeEndpoints.PublicUrl`。图片改由独立 nginx 媒体服务 `/media/**` 直出；头像/商户 Logo 上传端点原样返回 API 落库的**相对媒体键**（不再拼绝对 URL，host 由前端拼媒体源）。`GET /mobile/config` 响应新增 `mediaBaseUrl` 字段供前端覆盖媒体源 |
 | v1.3.0 | 2026-09-14 | 配置与版本端点：① 新增 `GET /mobile/config`（代理 API `/api/mobile/config`，匿名）——修复 Taro `getSiteConfig()` 因 BFF 缺该路由恒 404 的问题；② 新增 `GET /mobile/version/check`（代理 API `/api/mobile/version/check`，匿名，透传 currentVersion/platform）配合移动端版本更新功能 |
 | v1.2.0 | 2026-09-11 | 代码审查对齐：① 补充 `/me` 端点组（收藏/关注/历史/资料编辑/头像上传，18 个端点）；② 补充 `/media` 媒体代理；③ 补充认证端点 register/logout；④ 补充手机号格式校验；⑤ 轴承搜索补充 8 个缺失参数（BrandId/BearingTypeId/SortBy/SortOrder/6 维度范围）；⑥ 商家搜索补充 SortBy/SortOrder；⑦ 修正 favorites/followed DTO 为嵌套结构（含 CreatedAt）；⑧ 修正端点计数；⑨ 修正 PagedResult 无 totalPages 字段 |
