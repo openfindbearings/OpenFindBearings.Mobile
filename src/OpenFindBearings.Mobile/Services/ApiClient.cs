@@ -414,6 +414,59 @@ public class ApiClient
     }
 
     /// <summary>
+    /// DELETE 带结果透传（v1.13.0 撤销应答用）：镜像 PostWithResultAsync 语义，把上游状态码/错误码/detail 前传给前端。
+    /// </summary>
+    public async Task<ApiCallResult<T>> DeleteWithResultAsync<T>(
+        string path, string? accessToken = null, CancellationToken ct = default) where T : class
+    {
+        HttpResponseMessage response;
+        try
+        {
+            var client = CreateApiClient(accessToken);
+            response = await client.DeleteAsync(path, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "API DELETE {Path} 建连失败", path);
+            return new ApiCallResult<T>(false, 502, null, "UPSTREAM_UNREACHABLE", "上游服务连接失败，请稍后重试", default);
+        }
+        using (response)
+        {
+            var status = (int)response.StatusCode;
+            var text = await response.Content.ReadAsStringAsync(ct);
+            JsonElement bodyJson = default;
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                try { bodyJson = JsonDocument.Parse(text).RootElement.Clone(); }
+                catch (JsonException) { /* 非 JSON 体（如网关 HTML），保留默认由 ErrorText 兜底 */ }
+            }
+            var errCode = GetExtFromBody(bodyJson, "code");
+            var errText = GetExtFromBody(bodyJson, "detail")
+                       ?? GetExtFromBody(bodyJson, "message")
+                       ?? GetExtFromBody(bodyJson, "title");
+            if (response.IsSuccessStatusCode)
+            {
+                T? data = null;
+                if (bodyJson.ValueKind == JsonValueKind.Object)
+                {
+                    try
+                    {
+                        var wrapper = JsonSerializer.Deserialize<ApiResponseWrapper<T>>(bodyJson.GetRawText(), JsonOptions);
+                        data = wrapper?.Data;
+                    }
+                    catch (JsonException ex)
+                    {
+                        _logger.LogWarning(ex, "API DELETE {Path} 响应解析失败", path);
+                        return new ApiCallResult<T>(false, status, null, "RESPONSE_PARSE_ERROR", "响应解析失败", bodyJson);
+                    }
+                }
+                return new ApiCallResult<T>(true, status, data, null, null, bodyJson);
+            }
+            return new ApiCallResult<T>(false, status, null, errCode, errText, bodyJson);
+        }
+    }
+
+    /// <summary>
     /// 标准 API 响应包装结构
     /// </summary>
     private record ApiResponseWrapper<T>(bool Success, int Code, T? Data, string? Message) where T : class;

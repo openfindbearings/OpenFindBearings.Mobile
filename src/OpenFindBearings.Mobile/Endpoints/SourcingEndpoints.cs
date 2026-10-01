@@ -102,6 +102,25 @@ public static class SourcingEndpoints
         .RequireAuthorization();
 
         /// <summary>
+        /// 撤销应答（当前商户；仅待处理可撤；撤后需求回到未应答——招投标"开标前撤标"）
+        /// </summary>
+        group.MapDelete("/demands/{id}/respond", async (
+            string id,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+
+            var result = await api.DeleteWithResultAsync<object>($"/api/sourcing/demands/{id}/respond", token, ct);
+            return ProxyResult(result, "撤销失败");
+        })
+        .WithName("CancelSourcingResponse")
+        .WithSummary("撤销应答")
+        .RequireAuthorization();
+
+        /// <summary>
         /// 选定应答（发布人；成功后双方联系方式解锁）
         /// </summary>
         group.MapPost("/demands/{id}/select", async (
