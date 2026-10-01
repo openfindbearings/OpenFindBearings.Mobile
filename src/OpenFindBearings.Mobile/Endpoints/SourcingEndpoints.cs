@@ -236,15 +236,27 @@ public record SourcingQuotaItem(int FreeLimit, int TodayUsed, int HardLimit, int
 /// <summary>寻货额度聚合响应（v1.7.8 额度可见化）</summary>
 public record SourcingQuotaResponse(SourcingQuotaItem Publish, SourcingQuotaItem Respond, int Balance);
 
-/// <summary>应答明细（发布人可见全量）</summary>
+/// <summary>应答型号行（v1.5.0 多行标书：每条应答含多行型号，可引用在售商品）</summary>
+public record SourcingResponseItemDto(
+    Guid Id,
+    string PartNumber,
+    Guid? BearingId,
+    decimal? Price,
+    string? Stock,
+    string? LeadTime);
+
+/// <summary>应答明细（发布人可见全量；v1.5.0 多行标书 + 实力摘要）</summary>
 public record SourcingResponseDetail(
     Guid Id,
     Guid MerchantId,
     string? MerchantName,
     bool IsVerified,
-    decimal? Price,
-    string? Stock,
-    string? LeadTime,
+    // v1.5.0 证据力 P1：商家实力摘要（发布人选定的结构化判断依据）
+    string? CompanyName,
+    int OnSaleCount,
+    int CompletedTaskCount,
+    // v1.5.0 多行标书：应答型号行
+    List<SourcingResponseItemDto> Items,
     string Remark,
     int Status,
     DateTime CreatedAt);
@@ -252,9 +264,7 @@ public record SourcingResponseDetail(
 /// <summary>查看者自己商户的应答（其余人不可见他人报价）</summary>
 public record SourcingMyResponse(
     Guid Id,
-    decimal? Price,
-    string? Stock,
-    string? LeadTime,
+    List<SourcingResponseItemDto>? Items,
     string Remark,
     int Status,
     DateTime CreatedAt);
@@ -285,8 +295,16 @@ public record SourcingDetailResponse(
 public record SourcingPublishRequest(string PartNumber, Guid? BearingId, string? Brand, string? Quantity,
     string? ExpectedDelivery, string? Region, string? Description, bool UsePoints);
 
+/// <summary>应答请求（v1.5.0 多行标书透传体：报价/库存/交期按行携带）</summary>
+public record SourcingRespondItem(
+    string PartNumber,
+    Guid? BearingId,
+    decimal? Price,
+    string? Stock,
+    string? LeadTime);
+
 /// <summary>应答请求（透传体）</summary>
-public record SourcingRespondRequest(decimal? Price, string? Stock, string? LeadTime, string Remark, bool UsePoints);
+public record SourcingRespondRequest(List<SourcingRespondItem> Items, string Remark, bool UsePoints);
 
 /// <summary>选定请求（透传体）</summary>
 public record SourcingSelectRequest(Guid ResponseId);
@@ -305,15 +323,13 @@ public record SourcingMyDemandItem(
     bool IsPinned = false,
     DateTime? PinnedUntil = null);
 
-/// <summary>商户应答记录项（含需求快照）</summary>
+/// <summary>商户应答记录项（含需求快照；v1.5.0 型号行随应答透出）</summary>
 public record SourcingMerchantResponseItem(
     Guid Id,
     Guid DemandId,
     string? PartNumber,
     int? DemandStatus,
-    decimal? Price,
-    string? Stock,
-    string? LeadTime,
+    List<SourcingResponseItemDto>? Items,
     string Remark,
     int Status,
     DateTime CreatedAt);
