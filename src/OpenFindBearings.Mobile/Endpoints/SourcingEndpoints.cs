@@ -20,6 +20,7 @@ public static class SourcingEndpoints
         group.MapGet("/demands", async (
             string? keyword,
             bool onlyOpen,
+            bool mineOnly,
             int page,
             int pageSize,
             ApiClient api,
@@ -27,13 +28,15 @@ public static class SourcingEndpoints
             CancellationToken ct) =>
         {
             var token = GetToken(http);
-            var qs = $"?keyword={Uri.EscapeDataString(keyword ?? "")}&onlyOpen={onlyOpen}&page={(page <= 0 ? 1 : page)}&pageSize={(pageSize is > 0 and <= 50 ? pageSize : 20)}";
+            // 改动说明（我的寻货）：mineOnly 透传 API（仅返回当前发布人的寻货），
+            // 与 keyword/onlyOpen/分页正交，大厅与"我的寻货"共用同一条 feed 管线
+            var qs = $"?keyword={Uri.EscapeDataString(keyword ?? "")}&onlyOpen={onlyOpen}&mineOnly={mineOnly}&page={(page <= 0 ? 1 : page)}&pageSize={(pageSize is > 0 and <= 50 ? pageSize : 20)}";
             var result = await api.GetAsync<SourcingFeedResponse>($"/api/sourcing/demands{qs}", token, ct);
             return Results.Ok(result ?? new SourcingFeedResponse(Array.Empty<SourcingFeedItem>(), 0));
         })
         .WithName("GetSourcingFeed")
         .WithSummary("寻货列表")
-        .WithDescription("进行中寻货 feed（公开，型号搜索）");
+        .WithDescription("寻货 feed（mineOnly=true 时仅返回当前发布人全部状态的寻货）");
 
         /// <summary>
         /// 寻货详情（公开浏览；登录带当前商户时返回 myResponse，选定后返回解锁联系方式）
