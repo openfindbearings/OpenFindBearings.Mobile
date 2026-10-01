@@ -38,6 +38,21 @@ public static class HomeEndpoints
         .WithName("GetHome")
         .WithSummary("首页聚合数据")
         .AllowAnonymous();
+
+        /// <summary>
+        /// 品牌字典（v1.12.0）：独立轻量端点，供发现页寻货筛选面板取品牌列表
+        /// （不复用 /home 聚合避免拉整页数据）
+        /// </summary>
+        group.MapGet("/brands", async (
+            ApiClient api,
+            CancellationToken ct) =>
+        {
+            var brands = await api.GetAsync<List<BrandDto>>("/api/brands", ct);
+            return Results.Ok(brands ?? []);
+        })
+        .WithName("GetBrands")
+        .WithSummary("品牌字典")
+        .AllowAnonymous();
     }
 
     // ============ DTO 定义 ============

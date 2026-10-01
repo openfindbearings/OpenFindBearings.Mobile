@@ -15,12 +15,14 @@ public static class SourcingEndpoints
     public static void MapSourcingEndpoints(this RouteGroupBuilder group)
     {
         /// <summary>
-        /// 寻货 feed（公开浏览；keyword 型号搜索、onlyOpen 进行中过滤、分页）
+        /// 寻货 feed（公开浏览；keyword 型号搜索、brand/region 大厅筛选、sort 发布时间升降序、onlyOpen 过滤、分页）
         /// </summary>
         group.MapGet("/demands", async (
             string? keyword,
             bool onlyOpen,
-            bool mineOnly,
+            string? brand,
+            string? region,
+            string? sort,
             int page,
             int pageSize,
             ApiClient api,
@@ -28,15 +30,18 @@ public static class SourcingEndpoints
             CancellationToken ct) =>
         {
             var token = GetToken(http);
-            // 改动说明（我的寻货）：mineOnly 透传 API（仅返回当前发布人的寻货），
-            // 与 keyword/onlyOpen/分页正交，大厅与"我的寻货"共用同一条 feed 管线
-            var qs = $"?keyword={Uri.EscapeDataString(keyword ?? "")}&onlyOpen={onlyOpen}&mineOnly={mineOnly}&page={(page <= 0 ? 1 : page)}&pageSize={(pageSize is > 0 and <= 50 ? pageSize : 20)}";
+            // 改动说明（v1.12.0 信息架构收敛）：删 mineOnly 透传（发现页回归纯大厅，
+            // "我的寻货"走 /my/demands 独立端点），同批新增 brand/region/sort 筛选透传
+            var qs = $"?keyword={Uri.EscapeDataString(keyword ?? "")}&onlyOpen={onlyOpen}" +
+                $"&brand={Uri.EscapeDataString(brand ?? "")}&region={Uri.EscapeDataString(region ?? "")}" +
+                $"&sort={Uri.EscapeDataString(sort ?? "desc")}" +
+                $"&page={(page <= 0 ? 1 : page)}&pageSize={(pageSize is > 0 and <= 50 ? pageSize : 20)}";
             var result = await api.GetAsync<SourcingFeedResponse>($"/api/sourcing/demands{qs}", token, ct);
             return Results.Ok(result ?? new SourcingFeedResponse(Array.Empty<SourcingFeedItem>(), 0));
         })
         .WithName("GetSourcingFeed")
         .WithSummary("寻货列表")
-        .WithDescription("寻货 feed（mineOnly=true 时仅返回当前发布人全部状态的寻货）");
+        .WithDescription("寻货 feed（型号关键词 + brand/region 筛选 + sort 升降序 + 分页）");
 
         /// <summary>
         /// 寻货详情（公开浏览；登录带当前商户时返回 myResponse，选定后返回解锁联系方式）
