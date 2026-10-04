@@ -33,13 +33,17 @@ builder.Services.AddHttpClient("Identity", client =>
 // API 不再中转；Bearer 为用户 token 逐请求附加，Sync 受众校验接受 openfindbearings-api）。
 // 基址未配置（ApiUrls:FindBearingsSync 为空=公开版未部署 Sync）时不设 BaseAddress，
 // 端点侧显式检测并返回可读错误；超时放宽至 150s 覆盖大 Excel 上传
-builder.Services.AddHttpClient("Sync", client =>
+// 改动说明（open-core 门控）：Features:SyncIntegration=false（开源版不含 Sync 数据管线）时不注册该客户端
+if (builder.Configuration.GetValue("Features:SyncIntegration", false))
 {
-    var syncBase = builder.Configuration["ApiUrls:FindBearingsSync"];
-    if (!string.IsNullOrWhiteSpace(syncBase))
-        client.BaseAddress = new Uri(syncBase);
-    client.Timeout = TimeSpan.FromSeconds(150);
-});
+    builder.Services.AddHttpClient("Sync", client =>
+    {
+        var syncBase = builder.Configuration["ApiUrls:FindBearingsSync"];
+        if (!string.IsNullOrWhiteSpace(syncBase))
+            client.BaseAddress = new Uri(syncBase);
+        client.Timeout = TimeSpan.FromSeconds(150);
+    });
+}
 
 // 业务服务
 builder.Services.AddScoped<ApiClient>();
