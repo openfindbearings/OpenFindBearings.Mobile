@@ -1,9 +1,18 @@
-# deploy
+# deploy（OpenFindBearings.Mobile BFF 部署模板）
 
-本服务的集群部署清单统一收拢在私有仓库 **FindBearings.Infra**：
+本目录是移动端 BFF 的 K8s 部署清单模板。部署时请将占位符替换为真实域名。
 
-- K3s 清单：`apps/<服务名>/`
-- 密钥模板：`secrets/templates/`（真实值在 `secrets/real/`，不入库）
-- 部署手册：`runbooks/`
+## 步骤
 
-本仓库只保留代码、Dockerfile 与镜像构建/推送 CI（`.github/workflows/deploy.yml` 经 `kubectl set image` 滚动更新，不读本目录清单）。
+1. **创建 Secret**：`secrets/mobile-secret-template.yml`（Identity ClientSecret + 与 API 一致的内部令牌）后 apply
+2. **替换占位符**：`<your-bff-domain>` → 你的 BFF 域名（deploy.yml Ingress，TLS 由 cert-manager 签发）
+3. **ConfigMap**：`configmap.yml`（含依赖服务名，如服务名不同需调整）
+4. **依赖**：API、Identity；镜像 `ghcr.io/openfindbearings/openfindbearings-mobile`（公开）
+
+## apply
+
+```
+secrets → configmap.yml → deploy.yml
+```
+
+> 完整运维清单（真实域名/密钥）在私有运维库，本目录只提供模板，占位符请在部署时替换为真实值。
