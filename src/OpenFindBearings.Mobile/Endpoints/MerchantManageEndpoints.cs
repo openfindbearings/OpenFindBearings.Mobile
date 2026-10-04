@@ -156,6 +156,11 @@ public static class MerchantManageEndpoints
             if (file == null || file.Length == 0)
                 return Results.BadRequest(new { success = false, message = "请选择文件" });
 
+            // 开源版门控：Features:SyncIntegration=false（公开版不含 Sync 数据管线）时导入不可用；
+            //   与"ApiUrls:FindBearingsSync 为空"的运行态兜底双保险
+            if (!config.GetValue("Features:SyncIntegration", false))
+                return Results.Ok(new { success = false, message = "本部署未配置数据管线服务，库存导入不可用" });
+
             // 公开版未部署 Sync：基址为空时给可读错误（与 BFF 其余上游故障透传同形态）
             if (string.IsNullOrWhiteSpace(config["ApiUrls:FindBearingsSync"]))
                 return Results.Ok(new { success = false, message = "本部署未配置数据管线服务，库存导入不可用" });
