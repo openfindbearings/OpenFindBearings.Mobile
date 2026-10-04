@@ -109,3 +109,6 @@ Taro H5 (mobile.515813.xyz)          小程序/未来App
 ### 关联项目
 
 - [Taro 移动端设计](../OpenFindBearings.Taro/doc/OpenFindBearings.Taro移动端设计-v1.1.0.md)
+## 部署
+
+K8s 部署清单模板见 [deploy/](./deploy/)（真实域名/集群细节占位符请在部署时替换为真实值，并自行创建 Secret 后 kubectl apply）。

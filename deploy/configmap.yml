@@ -1,0 +1,16 @@
+# BFF 非敏感配置模板（部署时请按你的环境替换/调整）
+# 注意：Internal__ApiToken 由 Secret 承载（secrets/mobile-secret-template.yml），ConfigMap 不持有令牌
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openfindbearings-mobile-config
+  namespace: openfindbearings
+data:
+  ASPNETCORE_URLS: "http://+:8080"
+  Api__BaseUrl: "http://openfindbearings-api:80"
+  Identity__Authority: "http://openfindbearings-identity:80"
+  Identity__ClientId: "mobile-client"
+  # 请求 scope 必须带 offline_access，否则 OpenIddict 不签发 refresh_token
+  Identity__Scope: "api:mobile offline_access"
+  # 受众=资源服务器名（与 API 的 aud 一致）
+  Identity__Audience: "openfindbearings-api"
