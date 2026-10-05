@@ -17,7 +17,7 @@ OpenFindBearings.Mobile 是移动端 BFF（Backend-for-Frontend），为 Taro H5
 | v1.0.0 | 2026-08-31 | 初始版本，BFF 架构设计、端点定义、认证对接、部署配置完整落地 |
 | v1.1.0 | 2026-09-11 | 代码审查对齐：① 移除不存在的 `/mobile/config` 端点；② 补充 `/me` 端点组（收藏/关注/历史/资料编辑/头像上传，15 个端点）；③ 补充 `/media` 媒体代理端点；④ 中间件管道补充 RateLimiter；⑤ appsettings.json 修正（audience=openfindbearings-api、移除 ClientSecret、补 Realm/Scope/Internal）；⑥ 端点注册代码补充子组嵌套；⑦ AuthClient 方法表补充 3 个方法；⑧ ApiClient 方法表补充 6 个方法；⑨ 目录结构补充 MeEndpoints/MediaEndpoints |
 | v1.2.0 | 2026-09-14 | 商户入驻/维护代理落地与错误透传修复：① `/apply`（`/mobile/merchants/apply`）原 `PostAsync<object>` 吞掉上游所有 4xx/409 且固定返回 200（虚假成功），改用新增 `ApiClient.PostWithResultAsync<T>`（读 ProblemDetails status/code/detail/extensions）按状态码与错误码原样转发，支持 409 `MERCHANT_CLAIMABLE_EXISTS`（携 existingMerchantId/existingName）；② 新增商户信息维护代理 `GET/PUT /mobile/merchant/profile`（→ `/api/merchant/profile`，走 X-Merchant-Id 上下文）与 `POST /mobile/merchant/logo`（multipart 上传 + PublicUrl 拼绝对地址）；③ `MerchantApplicationItem` 新增 `LogoUrl`（TabBar/切换器）；④ 补充"商户入驻与管理代理"章节（此前 merchant 相关代理未列入端点清单），中间件管道补 `/merchant`（MapMerchantManageEndpoints）注册。 |
-| v1.3.0 | 2026-09-16 | 媒体代理退役（应用不应逐字节代理图片，是反模式）：删除 `MediaEndpoints.cs`、`/mobile/media` 注册与 `ApiClient.GetRawAsync`。图片改由独立 nginx 媒体服务在 `bff.515813.xyz/media/**` 直出（`OpenFindBearings.Api/deploy/k3s/media-server.yml`）。`MeEndpoints/MerchantManageEndpoints` 的 `PublicUrl` 绝对化助手删除，头像/商户 Logo 上传端点改为原样回 API 落库的**相对媒体键**（`/uploads/...`），host 由前端 `getMediaBase()` 拼接，媒体源 base 经 `GET /mobile/config` 的 `mediaBaseUrl` 下发——相对键入库 + 边缘拼 host，是将来切 MinIO/OSS 免改代码的接缝 |
+| v1.3.0 | 2026-09-16 | 媒体代理退役（应用不应逐字节代理图片，是反模式）：删除 `MediaEndpoints.cs`、`/mobile/media` 注册与 `ApiClient.GetRawAsync`。图片改由独立 nginx 媒体服务在 `<your-bff-domain>/media/**` 直出（`OpenFindBearings.Api/deploy/k3s/media-server.yml`）。`MeEndpoints/MerchantManageEndpoints` 的 `PublicUrl` 绝对化助手删除，头像/商户 Logo 上传端点改为原样回 API 落库的**相对媒体键**（`/uploads/...`），host 由前端 `getMediaBase()` 拼接，媒体源 base 经 `GET /mobile/config` 的 `mediaBaseUrl` 下发——相对键入库 + 边缘拼 host，是将来切 MinIO/OSS 免改代码的接缝 |
 | v1.4.0 | 2026-09-16 | 站内信代理落地：新增 `NotificationEndpoints.cs`，`/mobile/notifications` 组四端点透传 API `/api/notifications/*`（列表 `GET /`、未读数 `GET /unread-count`、单条已读 `POST /{id}/read`、全部已读 `POST /read-all`），统一 GetToken 透传模式 + RequireAuthorization；供 Taro 消息中心页与 TabBar 未读角标消费（事件驱动链路见 API《06 v2.5.0》4.6） |
 | v1.5.0 | 2026-09-16 | 被拒申请自助通道代理（对齐 API《06 v2.6.0》4.1.3）：① `GET /mobile/merchants/{merchantId}/application` → API 申请详情（重提表单预填源，上游 404 原样透传）；② `POST /mobile/merchants/{merchantId}/resubmit` → 修改重提（`PostWithResultAsync`，状态已变/名称撞他人/必填缺失等 4xx 按状态码与 detail 文案原样转发）；③ `POST /mobile/merchants/{merchantId}/delete-application` → 删除被拒申请（`PostVoidAsync`）。均需登录透传 token |
 | v1.6.0 | 2026-09-19 | 证照材料泛化代理（对齐 API《06 v2.7.0》4.7）：① `POST /mobile/merchant/license`→`POST /mobile/merchant/documents`（multipart form 带 `type` 1/2/3，上游失败不再虚假成功返回 502 文案）；② 新增 `GET /mobile/merchant/documents`（当前商户材料列表）、`POST /mobile/merchant/documents/upload`（随单材料预上传只回 URL）；③ apply/resubmit/accept 代理请求体 `licenseUrl`→`documents[]`（`DocumentInput{type,fileUrl}` 直通序列化），`ApplicationDetailItem` 补 `documents`；④ `ApiClient.UploadAsync` 新增可选 `extraFields`（置于 `ct` 之后保旧调用兼容）。 |
@@ -43,12 +43,12 @@ OpenFindBearings.Mobile 是移动端 BFF（Backend-for-Frontend），为 Taro H5
 ## 架构定位
 
 ```
-Taro H5 (mobile.515813.xyz)          Taro 小程序/未来 App
+Taro H5 (<your-mobile-domain>)          Taro 小程序/未来 App
         │                                      │
         │  浏览器直连                              │  走 BFF 公网域名
         ▼                                      ▼
   ┌──────────────────────────────────────────────────┐
-  │           Mobile BFF (bff.515813.xyz)              │
+  │           Mobile BFF (<your-bff-domain>)              │
   │  ASP.NET Core Minimal API (.NET 10)                │
   │  ├─ /mobile/home       首页聚合                    │
   │  ├─ /mobile/bearings/*  轴承代理                    │
@@ -71,12 +71,12 @@ Taro H5 (mobile.515813.xyz)          Taro 小程序/未来 App
 
 | 项目 | 职责 | 域名 | 容器 |
 |------|------|------|------|
-| OpenFindBearings.Taro | 前端界面（H5 静态文件） | mobile.515813.xyz | nginx:alpine |
-| OpenFindBearings.Mobile | BFF 后端 API 代理 | bff.515813.xyz | aspnet:10.0 |
+| OpenFindBearings.Taro | 前端界面（H5 静态文件） | <your-mobile-domain> | nginx:alpine |
+| OpenFindBearings.Mobile | BFF 后端 API 代理 | <your-bff-domain> | aspnet:10.0 |
 
 Taro H5 构建产物独立部署到 nginx 容器，不打包进 BFF 镜像。两者通过域名分离：
-- `mobile.515813.xyz` → Taro H5 静态文件（nginx）
-- `bff.515813.xyz/mobile/*` → BFF API 代理（ASP.NET Core）
+- `<your-mobile-domain>` → Taro H5 静态文件（nginx）
+- `<your-bff-domain>/mobile/*` → BFF API 代理（ASP.NET Core）
 
 ### 为什么需要 BFF
 
@@ -255,7 +255,7 @@ authGroup.RequireRateLimiting("auth");
 允许的源：
 - `http://localhost:10087`（本地开发）
 - `http://172.26.32.1:10087`（局域网调试）
-- `https://mobile.515813.xyz`（生产 Taro H5）
+- `https://<your-mobile-domain>`（生产 Taro H5）
 
 ## 配置
 
@@ -322,7 +322,7 @@ ENTRYPOINT ["dotnet", "OpenFindBearings.Mobile.dll"]
 |------|------|------|
 | Deployment | openfindbearings-mobile | 1 副本，revisionHistoryLimit=5 |
 | Service | openfindbearings-mobile | ClusterIP，port 80 → targetPort 8080 |
-| Ingress | openfindbearings-mobile-ingress | host: bff.515813.xyz，TLS 自动签发，nginx.ingress.kubernetes.io/proxy-body-size=5m |
+| Ingress | openfindbearings-mobile-ingress | host: <your-bff-domain>，TLS 自动签发，nginx.ingress.kubernetes.io/proxy-body-size=5m |
 
 ### 健康检查
 

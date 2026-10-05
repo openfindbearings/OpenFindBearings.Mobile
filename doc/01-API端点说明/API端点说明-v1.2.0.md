@@ -405,7 +405,7 @@ OpenFindBearings.Mobile 作为移动端 BFF，所有端点统一挂载在 `/mobi
 
 图片流式代理，转发 API 静态文件（images/uploads/avatars）。白名单路径前缀：`images/`、`uploads/`、`avatars/`。
 
-BFF 将 API 内部地址的相对路径转为公网绝对 URL（`bff.515813.xyz/mobile/media/...`），前端统一从 BFF 拉取图片。
+BFF 将 API 内部地址的相对路径转为公网绝对 URL（`<your-bff-domain>/mobile/media/...`），前端统一从 BFF 拉取图片。
 
 ---
 

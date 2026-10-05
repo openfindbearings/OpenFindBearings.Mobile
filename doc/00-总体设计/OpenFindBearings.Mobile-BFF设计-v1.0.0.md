@@ -25,12 +25,12 @@ OpenFindBearings.Mobile 是移动端 BFF（Backend-for-Frontend），为 Taro H5
 ## 架构定位
 
 ```
-Taro H5 (mobile.515813.xyz)          Taro 小程序/未来 App
+Taro H5 (<your-mobile-domain>)          Taro 小程序/未来 App
         │                                      │
         │  浏览器直连                              │  走 BFF 公网域名
         ▼                                      ▼
   ┌──────────────────────────────────────────────────┐
-  │           Mobile BFF (bff.515813.xyz)              │
+  │           Mobile BFF (<your-bff-domain>)              │
   │  ASP.NET Core Minimal API (.NET 10)                │
   │  ├─ /mobile/home       首页聚合                    │
   │  ├─ /mobile/bearings/*  轴承代理                    │
@@ -52,12 +52,12 @@ Taro H5 (mobile.515813.xyz)          Taro 小程序/未来 App
 
 | 项目 | 职责 | 域名 | 容器 |
 |------|------|------|------|
-| OpenFindBearings.Taro | 前端界面（H5 静态文件） | mobile.515813.xyz | nginx:alpine |
-| OpenFindBearings.Mobile | BFF 后端 API 代理 | bff.515813.xyz | aspnet:10.0 |
+| OpenFindBearings.Taro | 前端界面（H5 静态文件） | <your-mobile-domain> | nginx:alpine |
+| OpenFindBearings.Mobile | BFF 后端 API 代理 | <your-bff-domain> | aspnet:10.0 |
 
 Taro H5 构建产物独立部署到 nginx 容器，不打包进 BFF 镜像。两者通过域名分离：
-- `mobile.515813.xyz` → Taro H5 静态文件（nginx）
-- `bff.515813.xyz/mobile/*` → BFF API 代理（ASP.NET Core）
+- `<your-mobile-domain>` → Taro H5 静态文件（nginx）
+- `<your-bff-domain>/mobile/*` → BFF API 代理（ASP.NET Core）
 
 ### 为什么需要 BFF
 
@@ -204,7 +204,7 @@ mobile.MapAuthEndpoints();
 允许的源：
 - `http://localhost:10087`（本地开发）
 - `http://172.26.32.1:10087`（局域网调试）
-- `https://mobile.515813.xyz`（生产 Taro H5）
+- `https://<your-mobile-domain>`（生产 Taro H5）
 
 ## 配置
 
@@ -261,7 +261,7 @@ ENTRYPOINT ["dotnet", "OpenFindBearings.Mobile.dll"]
 |------|------|------|
 | Deployment | openfindbearings-mobile | 1 副本，revisionHistoryLimit=5 |
 | Service | openfindbearings-mobile | ClusterIP，port 80 → targetPort 8080 |
-| Ingress | openfindbearings-mobile-ingress | host: bff.515813.xyz，TLS 自动签发 |
+| Ingress | openfindbearings-mobile-ingress | host: <your-bff-domain>，TLS 自动签发 |
 
 ### 健康检查
 

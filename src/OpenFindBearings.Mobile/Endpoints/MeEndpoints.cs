@@ -361,7 +361,7 @@ public static class MeEndpoints
     /// <summary>
     /// 把 API 相对路径拼成 BFF 公网绝对 URL。
     /// 改动说明：Ingress 终结 TLS 后转发到容器是 http + 集群内 Host，
-    /// 必须优先取 traefik 注入的 X-Forwarded-Proto/Host 才能得到 https://bff.515813.xyz。
+    /// 必须优先取 traefik 注入的 X-Forwarded-Proto/Host 才能得到 https://<your-bff-domain>。
     /// </summary>
     /// <summary>API 头像上传响应 {url}</summary>
     public record AvatarUrlResult(string? Url);
