@@ -6,7 +6,7 @@ OpenFindBearings.Mobile 作为移动端 BFF，所有端点统一挂载在 `/mobi
 
 路由按资源子组注册（Program.cs）：`/mobile/bearings/*`、`/mobile/merchants/*`、`/mobile/me/*`、`/mobile/auth/*`；`/mobile/home` 与 `/mobile/profile` 挂在 `/mobile` 根下。
 
-> 媒体图片**不再经 BFF 代理**：v1.4.0 删除 `/mobile/media/**` 转发端点（应用逐字节代理图片是反模式）。改由独立 nginx 媒体服务在 `bff.515813.xyz/media/**` 直出（见 `OpenFindBearings.Api/deploy/k3s/media-server.yml`），前端 `getMediaBase()` 拼 base，媒体源 base 经 `GET /mobile/config` 的 `mediaBaseUrl` 下发。
+> 媒体图片**不再经 BFF 代理**：v1.4.0 删除 `/mobile/media/**` 转发端点（应用逐字节代理图片是反模式）。改由独立 nginx 媒体服务在 `<your-bff-domain>/media/**` 直出（见 `OpenFindBearings.Api/deploy/k3s/media-server.yml`），前端 `getMediaBase()` 拼 base，媒体源 base 经 `GET /mobile/config` 的 `mediaBaseUrl` 下发。
 
 ## 变更日志
 

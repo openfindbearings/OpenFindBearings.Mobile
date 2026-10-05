@@ -104,7 +104,7 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(
                 "http://localhost:10087",
                 "http://172.26.32.1:10087",
-                "https://mobile.515813.xyz"
+                "https://<your-mobile-domain>"
               )
               .AllowAnyHeader()
               .AllowAnyMethod();

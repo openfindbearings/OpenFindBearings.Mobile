@@ -24,12 +24,12 @@
 ## 架构
 
 ```
-Taro H5 (mobile.515813.xyz)          小程序/未来App
+Taro H5 (<your-mobile-domain>)          小程序/未来App
         │                                      │
         │  浏览器直连                            │  走 BFF 公网域名
         ▼                                      ▼
   ┌────────────────────────────────────────────────────┐
-  │         Mobile BFF (bff.515813.xyz)                │
+  │         Mobile BFF (<your-bff-domain>)                │
   │  ASP.NET Core Minimal API                         │
   │  ├─ /mobile/home       首页聚合                    │
   │  ├─ /mobile/bearings/* 轴承代理                    │
