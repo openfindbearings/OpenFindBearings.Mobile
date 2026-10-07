@@ -180,6 +180,42 @@ public static class MeEndpoints
         .WithName("ClearHistory")
         .WithSummary("清空浏览历史");
 
+        /// <summary>批量取消收藏（v2.12.0 列表多选：长按多选后批量操作）</summary>
+        group.MapPost("/favorites/batch-remove", async (
+            BatchIdsRequest body, HttpContext http, ApiClient api, CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var data = await api.PostAsync<AffectedResult>("/api/me/favorites/bearings/batch-remove", new { ids = body.Ids }, token, ct);
+            return Results.Ok(new { success = data != null, affected = data?.Affected ?? 0 });
+        })
+        .WithName("BatchRemoveFavorites")
+        .WithSummary("批量取消收藏");
+
+        /// <summary>批量取消关注（v2.12.0 列表多选）</summary>
+        group.MapPost("/follows/batch-remove", async (
+            BatchIdsRequest body, HttpContext http, ApiClient api, CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var data = await api.PostAsync<AffectedResult>("/api/me/follows/merchants/batch-remove", new { ids = body.Ids }, token, ct);
+            return Results.Ok(new { success = data != null, affected = data?.Affected ?? 0 });
+        })
+        .WithName("BatchRemoveFollows")
+        .WithSummary("批量取消关注");
+
+        /// <summary>批量删除浏览历史（v2.12.0 列表多选；轴承/商家两组目标 ID）</summary>
+        group.MapPost("/history/batch-delete", async (
+            BatchHistoryDeleteRequest body, HttpContext http, ApiClient api, CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var data = await api.PostAsync<AffectedResult>("/api/me/history/batch-delete", new { bearingIds = body.BearingIds, merchantIds = body.MerchantIds }, token, ct);
+            return Results.Ok(new { success = data != null, affected = data?.Affected ?? 0 });
+        })
+        .WithName("BatchDeleteHistory")
+        .WithSummary("批量删除浏览历史");
+
         // ============ 资料编辑 ============
 
         /// <summary>
@@ -403,4 +439,7 @@ public static class MeEndpoints
 
     /// <summary>可纠错字段选项（v1.7.4：键+中文名+当前值，前端表单渲染用）</summary>
     public record CorrectionFieldOption(string Key, string Label, string? CurrentValue);
+
+    /// <summary>批量删除历史请求（两组目标 ID，v2.12.0 列表多选）</summary>
+    public record BatchHistoryDeleteRequest(List<Guid>? BearingIds, List<Guid>? MerchantIds);
 }

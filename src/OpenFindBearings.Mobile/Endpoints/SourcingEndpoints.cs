@@ -214,6 +214,21 @@ public static class SourcingEndpoints
         .RequireAuthorization();
 
         /// <summary>
+        /// 批量删除寻货需求（v2.12.0 列表删除：软删终态单，左滑单删=ids 传一个）
+        /// </summary>
+        group.MapPost("/demands/batch-delete", async (
+            BatchIdsRequest body, ApiClient api, HttpContext http, CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var data = await api.PostAsync<BatchDeleteSourcingResult>("/api/sourcing/demands/batch-delete", new { ids = body.Ids }, token, ct);
+            return Results.Ok(new { success = data != null, deleted = data?.Deleted ?? 0, skipped = data?.Skipped ?? 0 });
+        })
+        .WithName("BatchDeleteSourcingDemands")
+        .WithSummary("批量删除寻货")
+        .RequireAuthorization();
+
+        /// <summary>
         /// 当前商户的应答记录（商家维度列表）
         /// </summary>
         group.MapGet("/my/responses", async (
@@ -399,3 +414,6 @@ public record SourcingMerchantResponseItem(
     string Remark,
     int Status,
     DateTime CreatedAt);
+
+/// <summary>寻货批量删除返回 {deleted,skipped}（进行中拒删计 skipped，v2.12.0 列表删除）</summary>
+public record BatchDeleteSourcingResult(int Deleted, int Skipped);
