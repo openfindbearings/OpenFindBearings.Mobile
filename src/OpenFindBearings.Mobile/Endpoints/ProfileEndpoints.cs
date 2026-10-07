@@ -196,11 +196,11 @@ public static class ProfileEndpoints
         int FavoriteCount,
         int FollowCount);
 
-    /// <summary>轴承摘要（收藏列表内嵌）</summary>
-    public record BearingBrief(Guid Id, string PartNumber, string? BrandName, string? BearingType);
+    /// <summary>轴承摘要（收藏列表内嵌）。改动说明（v2.12.0）：补 3D/2D 图 URL——收藏行显示轴承真图（3D 优先）</summary>
+    public record BearingBrief(Guid Id, string PartNumber, string? BrandName, string? BearingType, string? Image3DUrl, string? Image2DUrl);
 
-    /// <summary>商家摘要（关注列表内嵌）</summary>
-    public record MerchantBrief(Guid Id, string Name, string? CompanyName, bool IsVerified);
+    /// <summary>商家摘要（关注列表内嵌）。改动说明（v2.12.0）：补 LogoUrl——API 早已输出、本 record 漏映射致关注行恒显默认图标</summary>
+    public record MerchantBrief(Guid Id, string Name, string? CompanyName, bool IsVerified, string? LogoUrl);
 
     // 改动说明：收藏/关注项改为与 API FavoriteBearingDto/FollowedMerchantDto 一致的嵌套形状
     // {id, createdAt, bearing|merchant:{...}}，原平铺定义与响应不匹配导致列表恒空。
