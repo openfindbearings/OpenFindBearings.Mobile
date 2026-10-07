@@ -244,7 +244,11 @@ public record SourcingFeedItem(
     bool IsMine,
     // 改动说明（v2.10.0 寻货置顶）：置顶标记透传（大厅角标/排序展示）
     bool IsPinned = false,
-    DateTime? PinnedUntil = null);
+    DateTime? PinnedUntil = null,
+    // 改动说明（v2.12.0 商户名义发布）：发布方身份透传（徽章/跳转）
+    Guid? PublisherMerchantId = null,
+    string? PublisherMerchantName = null,
+    string? PublisherType = null);
 
 /// <summary>feed 分页响应</summary>
 public record SourcingFeedResponse(SourcingFeedItem[] Items, int Total);
@@ -308,11 +312,15 @@ public record SourcingDetailResponse(
     List<SourcingResponseDetail>? Responses,
     SourcingMyResponse? MyResponse,
     string? SelectedMerchantContact,
-    string? PublisherContact);
+    string? PublisherContact,
+    // 改动说明（v2.12.0 商户名义发布）：发布方身份透传
+    Guid? PublisherMerchantId = null,
+    string? PublisherMerchantName = null,
+    string? PublisherType = null);
 
-/// <summary>发布请求（透传体）</summary>
+/// <summary>发布请求（透传体；v2.12.0 加 MerchantId=商户名义发布）</summary>
 public record SourcingPublishRequest(string PartNumber, Guid? BearingId, string? Brand, string? Quantity,
-    string? ExpectedDelivery, string? Region, string? Description, bool UsePoints);
+    string? ExpectedDelivery, string? Region, string? Description, bool UsePoints, Guid? MerchantId = null);
 
 /// <summary>应答请求（v1.5.0 多行标书透传体：报价/库存/交期按行携带）</summary>
 public record SourcingRespondItem(
@@ -340,7 +348,11 @@ public record SourcingMyDemandItem(
     DateTime ExpiryAt,
     // 改动说明（v2.10.0 寻货置顶）："我的"页置顶按钮态透传
     bool IsPinned = false,
-    DateTime? PinnedUntil = null);
+    DateTime? PinnedUntil = null,
+    // 改动说明（v2.12.0 商户名义发布）：发布身份徽章透传
+    Guid? PublisherMerchantId = null,
+    string? PublisherMerchantName = null,
+    string? PublisherType = null);
 
 /// <summary>商户应答记录项（含需求快照；v1.5.0 型号行随应答透出）</summary>
 public record SourcingMerchantResponseItem(
