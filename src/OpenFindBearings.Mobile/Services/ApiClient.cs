@@ -86,7 +86,7 @@ public class ApiClient
 
     /// <summary>
     /// GET 请求带完整结果（改动说明：镜像 PostWithResultAsync 语义——判权前置类调用需要
-    /// 保留上游状态码与错误文案再决定后续编排，如库存导入 import-context 的 403/404 透传；
+    /// 保留上游状态码与错误文案再决定后续编排，如需按上游 403/404 分支判定的编排；
     /// GetAsync 吞状态码只回 null 不满足该场景）
     /// </summary>
     public async Task<ApiCallResult<T>> GetWithResultAsync<T>(string path, string? accessToken, CancellationToken ct = default) where T : class
