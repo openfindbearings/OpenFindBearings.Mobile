@@ -196,6 +196,24 @@ public static class SourcingEndpoints
         .RequireAuthorization();
 
         /// <summary>
+        /// 商户名义发布的寻货列表（v2.12.0 商户工作台"寻货管理-我发布的"，透传 X-Merchant-Id）
+        /// </summary>
+        group.MapGet("/merchant/demands", async (
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+
+            var result = await api.GetAsync<List<SourcingMerchantDemandItem>>("/api/sourcing/merchant/demands", token, ct);
+            return Results.Ok(result ?? new List<SourcingMerchantDemandItem>());
+        })
+        .WithName("GetMerchantSourcingDemands")
+        .WithSummary("商户名义发布的寻货列表")
+        .RequireAuthorization();
+
+        /// <summary>
         /// 当前商户的应答记录（商家维度列表）
         /// </summary>
         group.MapGet("/my/responses", async (
@@ -353,6 +371,23 @@ public record SourcingMyDemandItem(
     Guid? PublisherMerchantId = null,
     string? PublisherMerchantName = null,
     string? PublisherType = null);
+
+/// <summary>商户名义发布的寻货项（v2.12.0 商户工作台"寻货管理-我发布的"，含经办人）</summary>
+public record SourcingMerchantDemandItem(
+    Guid Id,
+    string PartNumber,
+    string? Brand,
+    string? Quantity,
+    int Status,
+    int ResponseCount,
+    DateTime CreatedAt,
+    DateTime ExpiryAt,
+    bool IsPinned = false,
+    DateTime? PinnedUntil = null,
+    /// <summary>经办人昵称（管理操作仅经办人本人，其他成员只读）</summary>
+    string? PublisherName = null,
+    /// <summary>当前用户是否经办人（前端出/藏管理按钮）</summary>
+    bool IsMine = false);
 
 /// <summary>商户应答记录项（含需求快照；v1.5.0 型号行随应答透出）</summary>
 public record SourcingMerchantResponseItem(
