@@ -131,7 +131,49 @@ public static class NotificationEndpoints
         .WithSummary("清空已读站内信")
         .WithDescription("批量删除当前用户所有已读消息，未读不受影响")
         .RequireAuthorization();
+
+        /// <summary>
+        /// 批量标记已读（v2.12.0 列表多选：长按多选后批量操作）
+        /// </summary>
+        group.MapPost("/batch-read", async (
+            BatchIdsRequest body,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var data = await api.PostAsync<AffectedResult>("/api/notifications/batch-read", new { ids = body.Ids }, token, ct);
+            return Results.Ok(new { success = data != null, affected = data?.Affected ?? 0 });
+        })
+        .WithName("BatchMarkNotificationsRead")
+        .WithSummary("批量标记站内信已读")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 批量删除站内信（v2.12.0 列表多选）
+        /// </summary>
+        group.MapPost("/batch-delete", async (
+            BatchIdsRequest body,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var data = await api.PostAsync<AffectedResult>("/api/notifications/batch-delete", new { ids = body.Ids }, token, ct);
+            return Results.Ok(new { success = data != null, affected = data?.Affected ?? 0 });
+        })
+        .WithName("BatchDeleteNotifications")
+        .WithSummary("批量删除站内信")
+        .RequireAuthorization();
     }
+
+    /// <summary>批量 ID 请求（通知/收藏/关注批量操作共用体）</summary>
+    public record BatchIdsRequest(List<Guid> Ids);
+
+    /// <summary>批量操作结果（透传 API {affected}）</summary>
+    public record AffectedResult(int Affected);
 
     private static string? GetToken(HttpContext http) =>
         http.Request.Headers.Authorization.FirstOrDefault()?.Replace("Bearer ", "");
@@ -150,3 +192,9 @@ public static class NotificationEndpoints
     /// <summary>未读数响应（API 返回 { count }）</summary>
     public record UnreadCountResponse(int Count);
 }
+
+/// <summary>批量 ID 请求（通知/收藏/关注批量操作共用体，v2.12.0 列表多选）</summary>
+public record BatchIdsRequest(List<Guid> Ids);
+
+/// <summary>批量操作结果（透传 API {affected}）</summary>
+public record AffectedResult(int Affected);
