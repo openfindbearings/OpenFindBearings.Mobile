@@ -1,8 +1,9 @@
+# OpenFindBearings.Mobile BFF 设计 v1.15.0
 
 - v1.7.11 备案拆分透传：MobileConfigDto record 新增 BeiAnApp/BeiAnMini 两字段（API /api/mobile/config 按名反序列化后原样透传 Taro，供 App/小程序关于页按平台展示各自备案号）
 - v1.7.10 寻货额度代理：GET /mobile/sourcing/quota 透传 API /api/sourcing/quota（额度条数据源，token+X-Merchant-Id 上下文）。
 - v1.7.10 积分代理组：`/mobile/points/account|checkin|transactions` 三端点（token 透传，对齐 API v1.32.0 / 《11-积分体系设计 v1.0.0》），供 Taro 我的页积分卡、签到按钮与明细页消费。
-- v1.7.5 商户关店代理：POST /mobile/merchants/{id}/close 透传 API /api/merchant/{id}/close（PostWithResultAsync，上游守卫文案 400/409 原样透传给 Taro 弹窗）。# OpenFindBearings.Mobile BFF 设计 v1.12.0
+- v1.7.5 商户关店代理：POST /mobile/merchants/{id}/close 透传 API /api/merchant/{id}/close（PostWithResultAsync，上游守卫文案 400/409 原样透传给 Taro 弹窗）。
 
 ## 概述
 
@@ -29,6 +30,9 @@ OpenFindBearings.Mobile 是移动端 BFF（Backend-for-Frontend），为 Taro H5
 | v1.7.2 | 2026-09-21 | 站内信删除代理（对齐 API《02 v1.27.0》）：`DELETE /mobile/notifications/{id}` 单条硬删 + `DELETE /mobile/notifications/read` 清空已读（DeleteVoidAsync 透传，未读保留） |
 | v1.10.0 | 2026-09-29 | **编排改造 + 令牌治理**（对齐 API《02 v1.43.0》《部署架构 v1.3.0》）：① 库存导入去 API 中转——`POST /mobile/merchant/inventory/import` 改两步编排：先 `GET /api/merchant/inventory/import-context` 判权拿权威 merchantId（403/404 文案透传），再以用户 Bearer **直传 Sync** `POST /api/inventory/import`（新命名 HttpClient "Sync"，150s 超时，`ApiUrls:FindBearingsSync` 配置；未配置=可读错误"本部署未配置数据管线服务"）；Taro 契约形态不变。② `ApiClient` 新增 `GetWithResultAsync`（带状态码 GET，镜像 PostWithResultAsync 语义）。③ `Internal:ApiToken` 真实值移出仓库改 REPLACE_ME（旧值曾随公开库泄露已轮换，生产经 K8s Secret `openfindbearings-mobile-secrets` 注入）。④ Sync 受众校验接受 `openfindbearings-api` 令牌，BFF 用户 token 直连 Sync 无需客户端凭据 |
 | v1.11.0 | 2026-09-30 | **验证码改密 + 端点表订正**（对齐 Identity v2.20.0、Taro v1.7.28）：① `POST /mobile/profile/change-password` 改透传 `verifyCode`（Identity `type=reset_password` 一次性消费校验；`ChangePasswordRequest` record 加 `VerifyCode`，`AuthClient.ChangePasswordAsync` 首参由 currentPassword 换 verifyCode）；② `POST /mobile/auth/send-code` 支持 `type` 透传（`SendCodeRequest(Phone, Type?)`→`AuthClient.SendSmsCodeAsync` 带 type，空则回落 login——Identity 端 Type 为 `[Required]`）；隔离登录码与改密码用途；③ 端点表订正：删除已下线的 `/mobile/auth/register`（注册并入验证码登录、BFF 端点早前已删，表一直滞后）、补 `/mobile/profile/change-password` 行 |
+| v1.15.0 | 2026-10-07 | **开源化：Sync 集成面代码级摘除**：删除 "Sync" 命名 HttpClient 注册、`POST /mobile/merchant/inventory/import` 两步编排端点（API 判权 + 直传 Sync）、`Features:SyncIntegration`/`ApiUrls:FindBearingsSync` 配置键与门控；Excel 库存导入能力整体归闭源线（开源版不提供） |
+| v1.14.0 | 2026-10 | **Sync 集成门控默认关闭**：`Features:SyncIntegration` appsettings 默认 `false`（v1.10.0 起存在但默认开）——① "Sync" 命名 HttpClient 按门控注册（false 不注册，开源版无 Sync 客户端残留）；② `POST /mobile/merchant/inventory/import` 端点加门控（false 直接返回"本部署未配置数据管线服务"，与 ApiUrls 空兜底双保险）；③ 自用部署 infra configMap 显式 `Features__SyncIntegration: "true"` 恢复导入能力。开源版无 Excel 导入接口 |
+| v1.13.0 | 2026-10-01 | **寻货应答多行标书 + 比价实力摘要透传**（对齐 API《02 v1.45.0》《12 v1.5.0》《Taro v1.7.30》）：① `SourcingRespondRequest` 改 `Items[]`（record `SourcingRespondItem{PartNumber,BearingId?,Price?,Stock?,LeadTime?}`，`POST /mobile/sourcing/demands/{id}/respond` 原样透传）；② 新增 `SourcingResponseItemDto` 型号行 record；`SourcingResponseDetail` 删 Price/Stock/LeadTime 改 `Items[]` + 新增实力摘要 `CompanyName/OnSaleCount/CompletedTaskCount`（发布人选定依据）；`SourcingMyResponse`/`SourcingMerchantResponseItem` 同步改 `Items[]`；**同版本追加**：新增 `DELETE /mobile/sourcing/demands/{id}/respond` 撤销应答代理（`ApiClient.DeleteWithResultAsync` 带错误透传，对齐 GET 语义）；端点 +1 |
 | v1.12.0 | 2026-09-30 | 发现页大厅化与筛选（对齐 API《02 v1.44.0》《12 v1.4.0》《Taro v1.7.29》）：① `GET /mobile/sourcing/demands` 删 `mineOnly` 透传、增 `brand`/`region`/`sort` 透传（"我的寻货"走既有 `/mobile/sourcing/my/demands` 独立端点）；② 新增 `GET /mobile/brands`（AllowAnonymous → API `/api/brands`，发现页筛选面板品牌字典轻量端点，不复用 `/home` 聚合避免拉整页数据）；端点总数 +1 |
 
 ## 专项文档
@@ -163,7 +167,7 @@ Taro H5 构建产物独立部署到 nginx 容器，不打包进 BFF 镜像。两
 | `/mobile/merchants/nominate/{code}/accept` | POST | 接受提名 | API `/api/merchant/nominate/{code}/accept` |
 | `/mobile/merchants/nominations/pending` | GET | 待我接受的提名 | API `/api/merchant/nominations/pending` |
 | `/mobile/merchants/staff` + `members/{id}/suspend\|activate` + `members/{id}/role` | GET/POST/PUT | 成员管理 | API `/api/merchant/staff` 等 |
-| `/mobile/merchant/bearings` + `onshelf/offshelf` + `inventory/import` | GET/POST | 自家商品与导入（**v1.10.0** import 改 BFF 编排：API 判权 + 直传 Sync） | API `/api/merchant/bearings` 等 + Sync `/api/inventory/import` |
+| `/mobile/merchant/bearings` + `onshelf/offshelf` | GET/POST | 自家商品管理 | API `/api/merchant/bearings` 等 |
 | `/mobile/merchant/documents` | POST | **v1.6.0** 上传证照材料（multipart 带 type，入驻后换证/补材料即时建待审记录） | API `/api/merchant/documents` |
 | `/mobile/merchant/documents` | GET | **v1.6.0** 当前商户材料列表（信息维护页证照区） | API `/api/merchant/documents` |
 | `/mobile/merchant/documents/upload` | POST | **v1.6.0** 随单材料预上传（只回 `{url}` 不建记录） | API `/api/merchant/documents/upload` |
@@ -271,9 +275,6 @@ authGroup.RequireRateLimiting("auth");
     "ClientId": "mobile-client",
     "Realm": "openfindbearings",
     "Scope": "api:mobile offline_access"
-  },
-  "ApiUrls": {
-    "FindBearingsSync": "http://openfindbearings-sync:80"
   },
   "Internal": {
     "ApiToken": "REPLACE_ME"
