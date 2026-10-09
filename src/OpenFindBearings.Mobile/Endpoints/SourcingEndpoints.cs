@@ -315,7 +315,10 @@ public record SourcingResponseDetail(
     List<SourcingResponseItemDto> Items,
     string Remark,
     int Status,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    // v2.12.0 等级玩法铭牌曝光：经办人段位（号+名，透传自 API）
+    int ResponderLevel = 1,
+    string? ResponderLevelName = null);
 
 /// <summary>查看者自己商户的应答（其余人不可见他人报价）</summary>
 public record SourcingMyResponse(

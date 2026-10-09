@@ -167,11 +167,13 @@ public static class PointsEndpoints
     // 时间治理批次：透传 API 下发的业务日界偏移（可空=旧 API 无此字段，前端按 +8 兜底），
     //   防管理员调整 BusinessClock 配置后前端硬编码 +8 与后端日界漂移
     // v2.7.0 G7：透传用户积分等级（level 数字 + levelName 名称）
-    public record PointAccountResponse(int Balance, int TotalEarned, int TotalSpent, bool TodayCheckedIn, int ConsecutiveDays, int? TzOffsetHours, int Level = 1, string? LevelName = null);
+    // v2.12.0 等级玩法：透传下一档三字段（进度条"距升 X 还差 Y 币"数据源；已达最高档为 null）
+    public record PointAccountResponse(int Balance, int TotalEarned, int TotalSpent, bool TodayCheckedIn, int ConsecutiveDays, int? TzOffsetHours, int Level = 1, string? LevelName = null, int? NextLevelMin = null, string? NextLevelName = null, int? NextLevelBonus = null);
 
     /// <summary>签到结果（对齐 API CheckinResult）</summary>
     // v2.1.0 成就子系统：透传本次签到新点亮的成就键（供 Taro toast）；v2.8.0 G1 暴击倍数
-    public record CheckinResponse(int Amount, int ConsecutiveDays, bool AlreadyCheckedIn, string[]? UnlockedAchievements = null, int CritMultiplier = 1);
+    // v2.12.0 等级玩法：透传签到后最终段位与是否跨档（leveledUp=true 前端播升级 toast）
+    public record CheckinResponse(int Amount, int ConsecutiveDays, bool AlreadyCheckedIn, string[]? UnlockedAchievements = null, int CritMultiplier = 1, int? Level = null, string? LevelName = null, bool LeveledUp = false);
 
     /// <summary>流水项（对齐 API /api/points/transactions items）</summary>
     public record PointTransactionItem(
@@ -194,7 +196,9 @@ public static class PointsEndpoints
         bool Done);
 
     /// <summary>商家福利卡（透传 API /api/points/merchant-buff，v2.5.0）</summary>
-    public record MerchantBuffResponse(Guid? MerchantId, string? MerchantName, int Grade, int Rank, List<string> Labels, string NextHint);
+    // v2.12.0 等级玩法：透传下一档升档礼金额（gradeUpBonus，商家金终身一次）与本店保级截止钟
+    //（graceUntil 仅 merchantId 本店视角返回，掉级倒计时卡数据源）
+    public record MerchantBuffResponse(Guid? MerchantId, string? MerchantName, int Grade, int Rank, List<string> Labels, string NextHint, int? GradeUpBonus = null, DateTime? GraceUntil = null);
 
     /// <summary>集体任务板响应（透传 API /api/points/merchant-tasks，v2.6.0）</summary>
     public record MerchantTasksResponse(Guid? MerchantId, string? MerchantName, List<MerchantTaskItem> Tasks, int CompletedTotal);
