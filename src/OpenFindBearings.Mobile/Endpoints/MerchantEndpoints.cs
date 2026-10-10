@@ -721,7 +721,7 @@ public static class MerchantEndpoints
         string? ContactPerson, string? Phone, string? Mobile, string? Email, string? Address,
         bool IsVerified, string? Status, string? Grade,
         int FollowerCount, int ProductCount, string? LogoUrl,
-        // v2.5.0 商家经济：等级中文展示名透传（入驻/认证/活跃供给/金牌），置于尾部带缺省防位置错位
+        // v2.5.0 商家经济：等级中文展示名透传（入驻/认证/口碑/金牌，v2.13.0 Lv3 改名口碑商家），置于尾部带缺省防位置错位
         string? GradeDisplay = null,
         // v2.6.0 商家主页：成员标记（"进入管理"横幅）与集体任务累计达成数（勋章园卡通关史）
         bool IsMerchantMember = false, int CompletedTaskCount = 0);
