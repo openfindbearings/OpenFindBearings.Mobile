@@ -117,6 +117,46 @@ public static class PointsEndpoints
         .RequireAuthorization();
 
         /// <summary>
+        /// 段位阶梯表（v2.13.0 段位详情页）：全档位+本人落档与升档礼已领标记（透传）
+        /// </summary>
+        group.MapGet("/levels", async (
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+
+            var result = await api.GetAsync<PointLadderResponse>("/api/points/levels", token, ct);
+            return Results.Ok(result ?? new PointLadderResponse(0, 1, "倔强青铜", new List<PointLadderItem>()));
+        })
+        .WithName("GetMyPointLevels")
+        .WithSummary("段位阶梯表")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 商家等级详情（v2.13.0 商家等级页）：双指标进度/四档阶梯/升档礼已领/保级钟（透传，API 校验在职成员）
+        /// </summary>
+        group.MapGet("/merchant-grade", async (
+            Guid merchantId,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+
+            var result = await api.GetAsync<MerchantGradeResponse>(
+                $"/api/points/merchant-grade?merchantId={merchantId}", token, ct);
+            return result == null
+                ? Results.Json(new { success = false, message = "等级详情获取失败，请稍后重试" }, statusCode: 502)
+                : Results.Ok(result);
+        })
+        .WithName("GetMerchantGrade")
+        .WithSummary("商家等级详情")
+        .RequireAuthorization();
+
+        /// <summary>
         /// 商家集体任务板（v2.6.0 M3）：周期任务进度与完成态（透传，散人为空清单）；
         /// 改动说明（v2.6.0 商家主页）：merchantId 可选透传——商家主页成员区按所属商家查询，
         /// 缺省仍走 API 最佳商户口径（任务中心卡）
@@ -194,6 +234,19 @@ public static class PointsEndpoints
         List<int>? Ladder,
         bool Daily,
         bool Done);
+
+    /// <summary>段位阶梯表（透传 API /api/points/levels，v2.13.0 段位详情页）</summary>
+    public record PointLadderResponse(int TotalEarned, int CurrentLevel, string CurrentLevelName, List<PointLadderItem> Levels);
+
+    /// <summary>段位档（reached=已达档；bonusClaimed=该档升档礼终身已领）</summary>
+    public record PointLadderItem(int Level, string Name, int MinTotalEarned, int LevelUpBonus, bool Reached, bool BonusClaimed);
+
+    /// <summary>商家等级详情（透传 API /api/points/merchant-grade，v2.13.0 商家等级页）</summary>
+    public record MerchantGradeResponse(Guid MerchantId, string? MerchantName, int Grade, int Rank, string GradeDisplay,
+        bool IsVerified, int OnSaleCount, int TreasuryEarned,
+        int Lv3OnSaleMin, int Lv4OnSaleMin, int Lv4TreasuryMin,
+        int BonusLv2, int BonusLv3, int BonusLv4, List<int> ClaimedRanks,
+        DateTime? GraceUntil, List<string> Labels);
 
     /// <summary>商家福利卡（透传 API /api/points/merchant-buff，v2.5.0）</summary>
     // v2.12.0 等级玩法：透传下一档升档礼金额（gradeUpBonus，商家金终身一次）与本店保级截止钟
