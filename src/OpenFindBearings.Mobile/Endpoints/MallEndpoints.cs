@@ -35,6 +35,33 @@ public record MallRedeemGiftRequest(Guid ItemId, string ReceiverName, string Rec
 /// <summary>确认收货响应（结算入商家金库的分值）</summary>
 public record MallConfirmResponse(int Settled);
 
+/// <summary>商城货源流条目（v2.14.0 商城导购：BFF 透传 API /api/mall/feed items，供商品卡渲染）</summary>
+public record MallFeedItem(
+    Guid Id, Guid MerchantId, string? MerchantName, string? MerchantGrade, bool MerchantIsVerified,
+    Guid BearingId, string BearingPartNumber, string? BearingOldNumber, string? BearingTypeName,
+    string? BrandName, string? Dimensions, string? Image3DUrl, string? Image2DUrl,
+    string? PriceDescription, bool IsPriceVisible, decimal? NumericPrice,
+    bool IsOnSale, bool IsRestocking, string? RestockEta);
+
+/// <summary>商城货源流查询参数（BFF 绑定查询串后透传 API）</summary>
+public class MallFeedQuery
+{
+    public string? Keyword { get; set; }
+    public Guid? BrandId { get; set; }
+    public Guid? BearingTypeId { get; set; }
+    public int? Category { get; set; }
+    public decimal? MinInnerDiameter { get; set; }
+    public decimal? MaxInnerDiameter { get; set; }
+    public decimal? MinOuterDiameter { get; set; }
+    public decimal? MaxOuterDiameter { get; set; }
+    public decimal? MinWidth { get; set; }
+    public decimal? MaxWidth { get; set; }
+    public string? SortBy { get; set; }
+    public string? SortOrder { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 20;
+}
+
 /// <summary>
 /// 商城代理端点（/mobile/mall/*，v2.3.0 商城虚拟权益）
 /// 代理 API /api/mall/*（目录/兑换/我的订单），供 Taro 商城 Tab 与商品管理置顶入口消费。
@@ -123,9 +150,43 @@ public static class MallEndpoints
                 ? Results.Ok(new { success = true, settled = call.Data?.Settled ?? 0 })
                 : Results.Json(new { success = false, message = call.ErrorText ?? "操作失败" }, statusCode: 400);
         })
-        .WithName("ConfirmMallReceiptProxy")
+.WithName("ConfirmMallReceiptProxy")
         .WithSummary("确认收货")
         .RequireAuthorization();
+
+        /// <summary>商城货源流（v2.14.0 商城导购）：全站在售货源分页，匿名可访问（带 token 时透传登录态）</summary>
+        group.MapGet("/feed", async (
+            [AsParameters] MallFeedQuery q, ApiClient api, HttpContext http, CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            var path = BuildFeedQueryString(q);
+            var result = await api.GetPagedAsync<MallFeedItem>(path, token, ct);
+            return Results.Ok(result ?? new ApiClient.PagedResult<MallFeedItem>([], 0, 1, 20));
+        })
+        .WithName("GetMallFeed")
+        .WithSummary("商城货源流")
+        .AllowAnonymous();
+    }
+
+    /// <summary>组装货源流查询串（透传 API /api/mall/feed 的过滤/排序/分页参数）</summary>
+    private static string BuildFeedQueryString(MallFeedQuery q)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(q.Keyword)) parts.Add($"keyword={Uri.EscapeDataString(q.Keyword)}");
+        if (q.BrandId.HasValue) parts.Add($"brandId={q.BrandId.Value}");
+        if (q.BearingTypeId.HasValue) parts.Add($"bearingTypeId={q.BearingTypeId.Value}");
+        if (q.Category.HasValue) parts.Add($"category={q.Category.Value}");
+        if (q.MinInnerDiameter.HasValue) parts.Add($"minInnerDiameter={q.MinInnerDiameter.Value}");
+        if (q.MaxInnerDiameter.HasValue) parts.Add($"maxInnerDiameter={q.MaxInnerDiameter.Value}");
+        if (q.MinOuterDiameter.HasValue) parts.Add($"minOuterDiameter={q.MinOuterDiameter.Value}");
+        if (q.MaxOuterDiameter.HasValue) parts.Add($"maxOuterDiameter={q.MaxOuterDiameter.Value}");
+        if (q.MinWidth.HasValue) parts.Add($"minWidth={q.MinWidth.Value}");
+        if (q.MaxWidth.HasValue) parts.Add($"maxWidth={q.MaxWidth.Value}");
+        if (!string.IsNullOrWhiteSpace(q.SortBy)) parts.Add($"sortBy={Uri.EscapeDataString(q.SortBy)}");
+        if (!string.IsNullOrWhiteSpace(q.SortOrder)) parts.Add($"sortOrder={Uri.EscapeDataString(q.SortOrder)}");
+        parts.Add($"page={q.Page}");
+        parts.Add($"pageSize={q.PageSize}");
+        return "/api/mall/feed?" + string.Join("&", parts);
     }
 
     /// <summary>从入站 Authorization 头取用户 access token（缺省 null）</summary>
