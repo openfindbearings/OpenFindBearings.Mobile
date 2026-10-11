@@ -22,6 +22,7 @@ public static class MerchantManageEndpoints
             int pageSize,
             bool? onlyOnSale,
             bool? pendingOnly,
+            int? reviewStatus,
             ApiClient api,
             HttpContext http,
             CancellationToken ct) =>
@@ -32,6 +33,8 @@ public static class MerchantManageEndpoints
             var path = $"/api/merchant/bearings?page={page}&pageSize={pageSize}";
             if (onlyOnSale.HasValue) path += $"&onlyOnSale={onlyOnSale.Value.ToString().ToLower()}";
             if (pendingOnly.HasValue) path += $"&pendingOnly={pendingOnly.Value.ToString().ToLower()}";
+            // v2.15.0 状态统一：审核位精确过滤（0=仓库中/1=审核中/2=已通过/3=已驳回）
+            if (reviewStatus.HasValue) path += $"&reviewStatus={reviewStatus.Value}";
 
             var result = await api.GetPagedAsync<MyMerchantBearingItem>(path, token, ct);
             return Results.Ok(result ?? new ApiClient.PagedResult<MyMerchantBearingItem>([], 0, 1, 20));
@@ -53,7 +56,7 @@ public static class MerchantManageEndpoints
             var token = GetToken(http);
             if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
             var result = await api.PostAsync<object>("/api/merchant/bearings", body, token, ct);
-            return Results.Ok(new { message = "添加成功，等待审核" });
+            return Results.Ok(new { message = "添加成功，已放入仓库中" });
         })
         .WithName("CreateMerchantBearing")
         .WithSummary("添加在售商品")
@@ -489,17 +492,16 @@ public static class MerchantManageEndpoints
     /// <summary>
     /// 自家在售商品项（对齐 API MerchantBearing 列表字段）
     /// 改动说明（v1.6.3）：补 Id（关联主键，编辑/上下架用）与四项描述（编辑表单回填）
-    ///   及 IsPendingApproval（审核中角标）——原裁剪过甚，编辑页无数据可回显
+    ///   及审核态——原裁剪过甚，编辑页无数据可回显
+    /// v2.15.0 状态统一：IsOnSale/IsRestocking/IsPendingApproval → SaleState + ReviewStatus
     /// </summary>
     public record MyMerchantBearingItem(
         Guid Id, Guid BearingId, string BearingPartNumber, string? OldNumber,
         string? BearingTypeName, string? BrandName,
         decimal? InnerDiameter, decimal? OuterDiameter, decimal? Width,
-        string? Price, bool IsOnSale,
-        // v1.7.9 三态销售状态：补货中与预计到货时间透传
-        bool IsRestocking, string? RestockEta,
+        string? Price, int SaleState, int ReviewStatus, string? RestockEta,
         string? PriceDescription, string? StockDescription, string? MinOrderDescription,
-        string? Remarks, bool IsPendingApproval);
+        string? Remarks, string? ApprovalComment);
 
     /// <summary>
     /// 商户资料（对齐 API MerchantDetailDto 中维护页所需字段）

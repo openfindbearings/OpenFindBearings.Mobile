@@ -41,7 +41,7 @@ public record MallFeedItem(
     Guid BearingId, string BearingPartNumber, string? BearingOldNumber, string? BearingTypeName,
     string? BrandName, string? Dimensions, string? Image3DUrl, string? Image2DUrl,
     string? PriceDescription, bool IsPriceVisible, decimal? NumericPrice,
-    bool IsOnSale, bool IsRestocking, string? RestockEta);
+    int SaleState, string? RestockEta);
 
 /// <summary>商城货源流查询参数（BFF 绑定查询串后透传 API）</summary>
 public class MallFeedQuery

@@ -730,7 +730,7 @@ public static class MerchantEndpoints
         Guid BearingId, string BearingPartNumber, string? OldNumber,
         string? BearingTypeName, string? BrandName,
         decimal? InnerDiameter, decimal? OuterDiameter, decimal? Width,
-        string? Price, bool IsOnSale);
+        string? Price, int SaleState);
 
     /// <summary>
     /// 入驻状态项（对齐 API MerchantApplicationDto）

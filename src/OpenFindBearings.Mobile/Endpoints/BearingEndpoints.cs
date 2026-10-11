@@ -118,8 +118,9 @@ public static class BearingEndpoints
         int ViewCount, int FavoriteCount);
 
     // v2.3.0 商城置顶卡：透传置顶态（买家侧角标 + 排序已由 API 完成）
+    // v2.15.0 状态统一：IsOnSale/IsRestocking → SaleState(0=已下架/1=出售中/2=补货中)
     public record BearingMerchantItem(
-        Guid MerchantId, string MerchantName, string? Price, bool IsOnSale, bool IsRestocking, string? RestockEta,
+        Guid MerchantId, string MerchantName, string? Price, int SaleState, string? RestockEta,
         bool IsPinned = false, DateTime? PinnedUntil = null);
 
     public record InterchangeItem(
