@@ -123,8 +123,12 @@ public static class BearingEndpoints
         Guid MerchantId, string MerchantName, string? Price, int SaleState, string? RestockEta,
         bool IsPinned = false, DateTime? PinnedUntil = null);
 
+    // v2.16.0 替代品治理：透传三级替代类型与责任提示字段（BearingId=替代品对方轴承，供导航）
     public record InterchangeItem(
-        Guid Id, string PartNumber, string BrandName, string BearingType, int Confidence);
+        Guid Id, Guid BearingId, string PartNumber, string? BrandName, string? BearingType,
+        decimal InnerDiameter, decimal OuterDiameter, decimal Width,
+        string? InterchangeType, string TypeLabel, int Confidence, string? Remarks,
+        bool IsBidirectional, bool IsAutoRecommendable);
 
     // ============ 工具 ============
 

@@ -293,6 +293,46 @@ public static class MerchantManageEndpoints
         .RequireAuthorization();
 
         /// <summary>
+        /// 提交替代候选（v2.16.0 替代品治理）：商家报候选，待平台审核后生效；
+        /// 上游失败原因（如"该替代关系已存在"）原样透传
+        /// </summary>
+        group.MapPost("/interchanges", async (
+            InterchangeSubmitRequest body,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var call = await api.PostWithResultAsync<object>("/api/merchant/interchanges", body, token, ct);
+            return call.Success
+                ? Results.Ok(new { success = true, message = "已提交，待平台审核" })
+                : Results.Json(new { success = false, message = call.ErrorText ?? "提交失败" }, statusCode: 400);
+        })
+        .WithName("SubmitInterchange")
+        .WithSummary("提交替代候选")
+        .WithDescription("商家提交替代候选，待平台审核后生效")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 我的替代提交（v2.16.0）：含各审核状态与驳回理由
+        /// </summary>
+        group.MapGet("/interchanges", async (
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var result = await api.GetAsync<List<InterchangeSubmissionItem>>("/api/merchant/interchanges", token, ct);
+            return Results.Ok(result ?? []);
+        })
+        .WithName("GetMyInterchanges")
+        .WithSummary("我的替代提交")
+        .WithDescription("商家查看本人提交的替代候选及审核状态")
+        .RequireAuthorization();
+
+        /// <summary>
         /// 上传商户 Logo：透传 multipart 到 API 落盘，原样返回相对媒体键 /uploads/merchants/logo/...
         /// 改动说明：与头像一致——相对键入库，host 由前端拼独立媒体源，不再由 BFF 拼绝对 URL。
         /// 仅返回 URL，实际写入 DB 由维护页保存 profile 时带 logoUrl 完成。
@@ -550,4 +590,21 @@ public static class MerchantManageEndpoints
     /// 材料预上传返回（v1.6.0 对齐 API /api/merchant/documents/upload 的 {url}）
     /// </summary>
     public record DocumentUrlResult(string? Url);
+
+    /// <summary>提交替代候选请求体（v2.16.0）</summary>
+    public record InterchangeSubmitRequest(
+        Guid SourceBearingId, Guid TargetBearingId, string? InterchangeType, int? Confidence,
+        string? Source, string? Remarks, bool? IsBidirectional);
+
+    /// <summary>替代关系中的轴承精简引用（v2.16.0）</summary>
+    public record InterchangeBearingRef(
+        Guid Id, string PartNumber, string? BrandName, string? BearingType,
+        decimal InnerDiameter, decimal OuterDiameter, decimal Width);
+
+    /// <summary>商家替代提交项（对齐 API InterchangeAdminDto，v2.16.0）</summary>
+    public record InterchangeSubmissionItem(
+        Guid Id, InterchangeBearingRef SourceBearing, InterchangeBearingRef TargetBearing,
+        string? InterchangeType, string TypeLabel, int Confidence, string? Remarks,
+        bool IsBidirectional, int ReviewStatus, string ReviewStatusLabel, string? ReviewComment,
+        DateTime CreatedAt);
 }
