@@ -139,6 +139,28 @@ public static class MerchantManageEndpoints
         .WithDescription("下架当前商户的在售商品，需登录且为商户成员")
         .RequireAuthorization();
 
+        /// <summary>
+        /// 删除商品（v2.15.0 商家删除）：出售中/补货中禁删（须先下架），其余状态物理删除；
+        /// 上游失败原因（如"请先下架再删除"）原样透传，前端可直接 toast
+        /// </summary>
+        group.MapDelete("/bearings/{id}", async (
+            string id,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var call = await api.DeleteWithResultAsync<object>($"/api/merchant/bearings/{id}", token, ct);
+            return call.Success
+                ? Results.Ok(new { success = true, message = "删除成功" })
+                : Results.Json(new { success = false, message = call.ErrorText ?? "删除失败（出售中/补货中的商品请先下架）" }, statusCode: 400);
+        })
+        .WithName("RemoveMerchantBearing")
+        .WithSummary("删除商品")
+        .WithDescription("删除当前商户的商品；出售中/补货中需先下架，其余状态物理删除")
+        .RequireAuthorization();
+
 
         /// <summary>
         /// 上传证照材料（v1.6.0 由"上传营业执照"泛化：type 1 执照 / 2 授权书 / 3 厂房照；
