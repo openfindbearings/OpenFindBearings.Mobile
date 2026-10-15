@@ -106,7 +106,7 @@ public static class MerchantEndpoints
         })
         .WithName("ApplyMerchant")
         .WithSummary("商家入驻申请")
-        .WithDescription("提交商家入驻申请（self 新建或 claim 认领爬虫商家），需登录")
+        .WithDescription("提交商家入驻申请（self 新建或 claim 认领互联网商家），需登录")
         .RequireAuthorization();
 
         /// <summary>
@@ -278,7 +278,7 @@ public static class MerchantEndpoints
         .RequireAuthorization();
 
         /// <summary>
-        /// 认领搜索爬虫商家（需登录）
+        /// 认领搜索互联网商家（需登录）
         /// </summary>
         group.MapGet("/claimable", async (
             string? keyword,
@@ -300,8 +300,8 @@ public static class MerchantEndpoints
             return Results.Ok(result ?? new ApiClient.PagedResult<ClaimableMerchantItem>([], 0, 1, 20));
         })
         .WithName("GetClaimableMerchants")
-        .WithSummary("认领搜索爬虫商家")
-        .WithDescription("搜索可认领的爬虫来源商家，需登录")
+        .WithSummary("认领搜索互联网商家")
+        .WithDescription("搜索可认领的互联网来源商家，需登录")
         .RequireAuthorization();
 
         /// <summary>
