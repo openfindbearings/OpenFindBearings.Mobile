@@ -317,8 +317,11 @@ public static class MerchantEndpoints
             if (string.IsNullOrEmpty(token))
                 return Results.Unauthorized();
 
-            var result = await api.PostAsync<object>("/api/merchant/nominate", body, token, ct);
-            return Results.Ok(new { message = "提名邀请已创建，等待对方接受" });
+            // 改动说明（v2.13.2 假成功修复）：原 PostAsync 吞 4xx 后无条件回成功文案（提交失败也提示成功）
+            var result = await api.PostWithResultAsync<object>("/api/merchant/nominate", body, token, ct);
+            return result.Success
+                ? Results.Ok(new { success = true, message = "提名邀请已创建，等待对方接受" })
+                : BffProxy.Result(result, "提名失败");
         })
         .WithName("NominateMerchant")
         .WithSummary("提名他人为管理员")
@@ -339,8 +342,11 @@ public static class MerchantEndpoints
             if (string.IsNullOrEmpty(token))
                 return Results.Unauthorized();
 
-            var result = await api.PostAsync<object>($"/api/merchant/nominate/{code}/accept", body, token, ct);
-            return Results.Ok(new { message = "已接受提名，申请已提交，等待审核" });
+            // 改动说明（v2.13.2 假成功修复）：同 nominate，失败不再谎报成功
+            var result = await api.PostWithResultAsync<object>($"/api/merchant/nominate/{code}/accept", body, token, ct);
+            return result.Success
+                ? Results.Ok(new { success = true, message = "已接受提名，申请已提交，等待审核" })
+                : BffProxy.Result(result, "接受提名失败");
         })
         .WithName("AcceptNomination")
         .WithSummary("接受管理员提名")
@@ -726,11 +732,13 @@ public static class MerchantEndpoints
         // v2.6.0 商家主页：成员标记（"进入管理"横幅）与集体任务累计达成数（勋章园卡通关史）
         bool IsMerchantMember = false, int CompletedTaskCount = 0);
 
+    // 改动说明（v2.13.2 幻影字段修复）：对齐 API MerchantBearingDto——OldNumber/InnerDiameter/OuterDiameter/
+    //   Width/Price 上游并不存在（实为 BearingOldNumber/Dimensions/PriceDescription），旧名反序列化恒 null，
+    //   致商家详情页价格永不显示
     public record MerchantBearingItem(
-        Guid BearingId, string BearingPartNumber, string? OldNumber,
+        Guid BearingId, string BearingPartNumber, string? BearingOldNumber,
         string? BearingTypeName, string? BrandName,
-        decimal? InnerDiameter, decimal? OuterDiameter, decimal? Width,
-        string? Price, int SaleState);
+        string? Dimensions, string? PriceDescription, int SaleState);
 
     /// <summary>
     /// 入驻状态项（对齐 API MerchantApplicationDto）

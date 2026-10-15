@@ -104,10 +104,6 @@ public static class AchievementEndpoints
     /// <summary>佩戴称号请求体（Title 空白=卸下）</summary>
     public record EquipTitleRequest(string? Title);
 
-    /// <summary>从入站 Authorization 头取用户 access token（缺省 null）</summary>
-    private static string? GetToken(HttpContext http)
-    {
-        var auth = http.Request.Headers.Authorization.ToString();
-        return auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? auth["Bearer ".Length..] : null;
-    }
+    /// <summary>取用户 access token（委托 BffProxy.Token；改动说明 v2.13.2 统一含 claim 校验）</summary>
+    private static string? GetToken(HttpContext http) => BffProxy.Token(http);
 }

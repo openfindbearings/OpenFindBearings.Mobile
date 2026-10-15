@@ -54,6 +54,6 @@ public static class GameEndpoints
         .WithSummary("游戏结算代理");
     }
 
-    private static string? GetToken(HttpContext http) =>
-        http.Request.Headers.Authorization.FirstOrDefault()?.Replace("Bearer ", "");
+    // 改动说明（v2.13.2 令牌提取统一）：委托 BffProxy.Token（含 claim 校验，防过期/无效令牌前传上游）
+    private static string? GetToken(HttpContext http) => BffProxy.Token(http);
 }

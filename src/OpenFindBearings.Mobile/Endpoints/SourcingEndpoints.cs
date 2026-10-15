@@ -245,6 +245,48 @@ public static class SourcingEndpoints
         .WithName("GetMySourcingResponses")
         .WithSummary("商户寻货应答记录")
         .RequireAuthorization();
+
+        /// <summary>
+        /// 我的在售同款（v1.36.0 应答预填）：透传 X-Merchant-Id 当前商户，API 定位在售/补货中条目。
+        /// 改动说明（v2.13.2 漏接线修复）：API 早有 /my-offering，BFF 此前漏代理致 RN 端应答预填恒空
+        /// </summary>
+        group.MapGet("/my-offering", async (
+            string? bearingId,
+            string? partNumber,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            // 空 bearingId 不拼进上游串（API 的 Guid? 绑定遇空串会 400），缺省即 null 走型号文本匹配
+            var qs = $"?partNumber={Uri.EscapeDataString(partNumber ?? "")}";
+            if (!string.IsNullOrWhiteSpace(bearingId))
+                qs += $"&bearingId={Uri.EscapeDataString(bearingId)}";
+            var result = await api.GetAsync<MyOfferingResponse>($"/api/sourcing/my-offering{qs}", token, ct);
+            return Results.Ok(result ?? new MyOfferingResponse(false));
+        })
+        .WithName("GetSourcingMyOffering")
+        .WithSummary("我的在售同款（应答预填）")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 需求信号（v1.36.0 反向导购）：透传 X-Merchant-Id 当前商户。
+        /// 改动说明（v2.13.2 漏接线修复）：API 早有 /opportunities，BFF 此前漏代理致商家横幅恒不显示
+        /// </summary>
+        group.MapGet("/opportunities", async (
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var result = await api.GetAsync<List<OpportunityItem>>("/api/sourcing/opportunities", token, ct);
+            return Results.Ok(result ?? new List<OpportunityItem>());
+        })
+        .WithName("GetSourcingOpportunities")
+        .WithSummary("需求信号（反向导购）")
+        .RequireAuthorization();
     }
 
     /// <summary>
@@ -259,8 +301,8 @@ public static class SourcingEndpoints
     }
 
     /// <summary>从入站 Authorization 头取 Bearer token</summary>
-    private static string? GetToken(HttpContext http)
-        => http.Request.Headers.Authorization.FirstOrDefault()?.Replace("Bearer ", "");
+    // 改动说明（v2.13.2 令牌提取统一）：委托 BffProxy.Token（含 claim 校验）
+    private static string? GetToken(HttpContext http) => BffProxy.Token(http);
 }
 
 /// <summary>feed 单项（对齐 API /api/sourcing/demands items）</summary>
@@ -420,3 +462,18 @@ public record SourcingMerchantResponseItem(
 
 /// <summary>寻货批量删除返回 {deleted,skipped}（进行中拒删计 skipped，v2.12.0 列表删除）</summary>
 public record BatchDeleteSourcingResult(int Deleted, int Skipped);
+
+/// <summary>我的在售同款（v2.13.2 补代理；对齐 API /api/sourcing/my-offering，应答预填数据源）</summary>
+public record MyOfferingResponse(
+    bool Found,
+    bool IsOnSale = false,
+    bool IsRestocking = false,
+    decimal? Price = null,
+    string? PriceDescription = null,
+    string? Stock = null,
+    string? MinOrder = null,
+    string? RestockEta = null,
+    string? Remarks = null);
+
+/// <summary>需求信号项（v2.13.2 补代理；对齐 API /api/sourcing/opportunities 反向导购横幅）</summary>
+public record OpportunityItem(string PartNumber, int DemandCount, DateTime LatestAt);

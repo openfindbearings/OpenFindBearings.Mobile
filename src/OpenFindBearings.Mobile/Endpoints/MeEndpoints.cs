@@ -276,7 +276,7 @@ public static class MeEndpoints
             // 改动说明（v1.6.2）：透传上游真实失败原因（UploadAsync 非 2xx 抛 UpstreamUploadException）
             try
             {
-                var data = await api.UploadAsync<AvatarUrlResult>(
+                var data = await api.UploadAsync<UrlResult>(
                     "/api/me/avatar", stream, file.FileName, file.ContentType ?? "image/jpeg", token, ct);
                 if (data?.Url == null)
                     return Results.Ok(new { success = false, message = "上传失败" });
@@ -400,7 +400,7 @@ public static class MeEndpoints
     /// 必须优先取 traefik 注入的 X-Forwarded-Proto/Host 才能得到 https://<your-bff-domain>。
     /// </summary>
     /// <summary>API 头像上传响应 {url}</summary>
-    public record AvatarUrlResult(string? Url);
+    // 改动说明（v2.13.2 收敛）：头像上传返回体并入统一 UrlResult（见 BffProxy.cs）
 
     // ============ DTO ============
 

@@ -169,14 +169,11 @@ public static class NotificationEndpoints
         .RequireAuthorization();
     }
 
-    /// <summary>批量 ID 请求（通知/收藏/关注批量操作共用体）</summary>
-    public record BatchIdsRequest(List<Guid> Ids);
+// 改动说明（v2.13.2 重复定义清理）：删除类内重复的 BatchIdsRequest/AffectedResult
+    //   （与文件末尾命名空间级同型记录重复），统一取命名空间级那份
 
-    /// <summary>批量操作结果（透传 API {affected}）</summary>
-    public record AffectedResult(int Affected);
-
-    private static string? GetToken(HttpContext http) =>
-        http.Request.Headers.Authorization.FirstOrDefault()?.Replace("Bearer ", "");
+    // 改动说明（v2.13.2 令牌提取统一）：委托 BffProxy.Token（含 claim 校验）
+    private static string? GetToken(HttpContext http) => BffProxy.Token(http);
 
     /// <summary>收件箱列表项（对齐 API NotificationDto）</summary>
     public record NotificationItem(

@@ -110,8 +110,10 @@ public static class BearingEndpoints
         string BearingType, decimal InnerDiameter, decimal OuterDiameter, decimal Width,
         string BrandName, string? Image3DUrl, string? Image2DUrl);
 
+    // 改动说明（v2.13.2 幻影字段修复）：EnglishName 上游（BearingDto/BearingDetailDto）并不存在，
+//   反序列化恒 null，故移除；类型走 BearingType（API 详情已补填）
     public record BearingDetail(
-        Guid Id, string PartNumber, string? OldNumber, string? EnglishName,
+        Guid Id, string PartNumber, string? OldNumber,
         string BearingType, decimal InnerDiameter, decimal OuterDiameter, decimal Width,
         decimal? Weight, string BrandName, string? BrandCountry,
         string? Image3DUrl, string? Image2DUrl,

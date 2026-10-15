@@ -97,12 +97,13 @@ public static class MallEndpoints
 
             var call = await api.PostWithResultAsync<MallRedeemResponse>(
                 "/api/mall/redeem", new { itemId = req.ItemId, targetRef = req.TargetRef, requestId = req.RequestId, useTreasury = req.UseTreasury }, token, ct);
-            if (!call.Success || call.Data == null)
-            {
-                var msg = call.ErrorText ?? "兑换失败，请稍后重试";
-                return Results.Json(new { success = false, message = msg }, statusCode: 400);
-            }
-            return Results.Ok(call.Data);
+// 改动说明（v2.13.2 状态码一致性）：原无论上游何状态一律回 400（含 401/500），
+            //   改 BffProxy.Result 保留上游状态码（建连失败→502），与其余代理一致
+            if (!call.Success)
+                return BffProxy.Result(call, "兑换失败，请稍后重试");
+            return call.Data == null
+                ? Results.Json(new { success = false, message = "兑换失败，请稍后重试" }, statusCode: 502)
+                : Results.Ok(call.Data);
         })
         .WithName("RedeemMallItem")
         .WithSummary("积分兑换")
@@ -132,9 +133,12 @@ public static class MallEndpoints
             if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
             var call = await api.PostWithResultAsync<MallRedeemResponse>("/api/mall/redeem-gift",
                 new { itemId = req.ItemId, receiverName = req.ReceiverName, receiverPhone = req.ReceiverPhone, receiverAddress = req.ReceiverAddress, requestId = req.RequestId }, token, ct);
-            if (!call.Success || call.Data == null)
-                return Results.Json(new { success = false, message = call.ErrorText ?? "兑换失败" }, statusCode: 400);
-            return Results.Ok(call.Data);
+            // 改动说明（v2.13.2 状态码一致性）：同 /redeem，保留上游状态码
+            if (!call.Success)
+                return BffProxy.Result(call, "兑换失败");
+            return call.Data == null
+                ? Results.Json(new { success = false, message = "兑换失败" }, statusCode: 502)
+                : Results.Ok(call.Data);
         })
         .WithName("RedeemMallGiftProxy")
         .WithSummary("礼品兑换")
@@ -146,9 +150,10 @@ public static class MallEndpoints
             var token = GetToken(http);
             if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
             var call = await api.PostWithResultAsync<MallConfirmResponse>($"/api/mall/orders/{id}/confirm-receipt", new { }, token, ct);
+            // 改动说明（v2.13.2 状态码一致性）：失败保留上游状态码（原强制 400）
             return call.Success
                 ? Results.Ok(new { success = true, settled = call.Data?.Settled ?? 0 })
-                : Results.Json(new { success = false, message = call.ErrorText ?? "操作失败" }, statusCode: 400);
+                : BffProxy.Result(call, "操作失败");
         })
 .WithName("ConfirmMallReceiptProxy")
         .WithSummary("确认收货")
@@ -189,10 +194,6 @@ public static class MallEndpoints
         return "/api/mall/feed?" + string.Join("&", parts);
     }
 
-    /// <summary>从入站 Authorization 头取用户 access token（缺省 null）</summary>
-    private static string? GetToken(HttpContext http)
-    {
-        var auth = http.Request.Headers.Authorization.ToString();
-        return auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? auth["Bearer ".Length..] : null;
-    }
+/// <summary>取用户 access token（委托 BffProxy.Token；改动说明 v2.13.2 统一含 claim 校验）</summary>
+    private static string? GetToken(HttpContext http) => BffProxy.Token(http);
 }

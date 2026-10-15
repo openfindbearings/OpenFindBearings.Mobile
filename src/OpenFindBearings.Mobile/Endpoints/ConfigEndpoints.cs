@@ -20,8 +20,10 @@ public static class ConfigEndpoints
             CancellationToken ct) =>
         {
             var config = await api.GetAsync<MobileConfigDto>("/api/mobile/config", ct);
+            // 改动说明（v2.13.2 错误封装统一）：原 Results.Problem 走 RFC7807（无 message 字段），
+            //   与其余代理的 { success:false, message } 不一致，前端 request 兜底成字面 "HTTP 502"
             return config is null
-                ? Results.Problem("站点配置获取失败", statusCode: 502)
+                ? Results.Json(new { success = false, message = "站点配置获取失败" }, statusCode: 502)
                 : Results.Ok(config);
         })
         .WithName("GetSiteConfig")
@@ -41,8 +43,9 @@ public static class ConfigEndpoints
             var path = $"/api/mobile/version/check?currentVersion={Uri.EscapeDataString(currentVersion)}"
                 + $"&platform={Uri.EscapeDataString(platform)}";
             var result = await api.GetAsync<VersionCheckDto>(path, ct);
+            // 改动说明（v2.13.2 错误封装统一）：同 /config，改 { success:false, message }
             return result is null
-                ? Results.Problem("版本检查失败", statusCode: 502)
+                ? Results.Json(new { success = false, message = "版本检查失败" }, statusCode: 502)
                 : Results.Ok(result);
         })
         .WithName("CheckVersion")

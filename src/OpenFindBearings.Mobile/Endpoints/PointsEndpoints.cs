@@ -200,8 +200,8 @@ public static class PointsEndpoints
         .RequireAuthorization();
     }
 
-    private static string? GetToken(HttpContext http) =>
-        http.Request.Headers.Authorization.FirstOrDefault()?.Replace("Bearer ", "");
+    // 改动说明（v2.13.2 令牌提取统一）：委托 BffProxy.Token（含 claim 校验）
+    private static string? GetToken(HttpContext http) => BffProxy.Token(http);
 
     /// <summary>账户概览响应（对齐 API /api/points/account）</summary>
     // 时间治理批次：透传 API 下发的业务日界偏移（可空=旧 API 无此字段，前端按 +8 兜底），
@@ -233,7 +233,10 @@ public static class PointsEndpoints
         string? Description,
         List<int>? Ladder,
         bool Daily,
-        bool Done);
+        bool Done,
+        // 改动说明（v2.13.2 字段缺失修复）：补 count/limit（API 早已下发，BFF 漏声明致任务中心"今日 n/上限"恒空）
+        int Count = 0,
+        int Limit = 0);
 
     /// <summary>段位阶梯表（透传 API /api/points/levels，v2.13.0 段位详情页）</summary>
     public record PointLadderResponse(int TotalEarned, int CurrentLevel, string CurrentLevelName, List<PointLadderItem> Levels);
