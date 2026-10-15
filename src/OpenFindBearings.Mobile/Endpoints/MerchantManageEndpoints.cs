@@ -55,8 +55,11 @@ public static class MerchantManageEndpoints
         {
             var token = GetToken(http);
             if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
-            var result = await api.PostAsync<object>("/api/merchant/bearings", body, token, ct);
-            return Results.Ok(new { message = "添加成功，已放入仓库中" });
+            // 改动说明（v2.13.2 假成功修复）：原 PostAsync 吞 4xx 后无条件回"添加成功"，改用带结果透传
+            var result = await api.PostWithResultAsync<object>("/api/merchant/bearings", body, token, ct);
+            return result.Success
+                ? Results.Ok(new { success = true, message = "添加成功，已放入仓库中" })
+                : BffProxy.Result(result, "添加失败");
         })
         .WithName("CreateMerchantBearing")
         .WithSummary("添加在售商品")
@@ -237,7 +240,7 @@ public static class MerchantManageEndpoints
             // 改动说明（v1.6.2）：透传上游真实失败原因（扩展名/MIME/大小限制等 400 文案）
             try
             {
-                var data = await api.UploadAsync<DocumentUrlResult>(
+                var data = await api.UploadAsync<UrlResult>(
                     "/api/merchant/documents/upload", ms, file.FileName, file.ContentType ?? "image/jpeg", token, ct);
                 return data?.Url is null
                     ? Results.Ok(new { success = false, message = "上传失败" })
@@ -352,7 +355,7 @@ public static class MerchantManageEndpoints
             // 改动说明（v1.6.2）：透传上游真实失败原因
             try
             {
-                var data = await api.UploadAsync<LogoUrlResult>(
+                var data = await api.UploadAsync<UrlResult>(
                     "/api/merchant/logo", stream, file.FileName, file.ContentType ?? "image/jpeg", token, ct);
                 if (data?.Url == null)
                     return Results.Ok(new { success = false, message = "上传失败（可能无管理员权限）" });
@@ -451,7 +454,7 @@ public static class MerchantManageEndpoints
             ms.Position = 0;
             try
             {
-                var data = await api.UploadAsync<GiftImageResult>(
+                var data = await api.UploadAsync<UrlResult>(
                     "/api/merchant/gifts/image", ms, file.FileName, file.ContentType ?? "image/jpeg", token, ct);
                 return data?.Url is null
                     ? Results.Ok(new { success = false, message = "上传失败" })
@@ -516,8 +519,7 @@ public static class MerchantManageEndpoints
     /// <summary>发货代理请求体</summary>
     public record ShipGiftProxyRequest(string? Tracking);
 
-    /// <summary>礼品图上传响应</summary>
-    public record GiftImageResult(string? Url);
+    // 改动说明（v2.13.2 收敛）：礼品图上传响应并入统一 UrlResult（见 BffProxy.cs）
 
     /// <summary>
     /// 从入站请求提取用户 access token（与 MeEndpoints 同逻辑）
@@ -557,11 +559,12 @@ public static class MerchantManageEndpoints
     ///   及审核态——原裁剪过甚，编辑页无数据可回显
     /// v2.15.0 状态统一：IsOnSale/IsRestocking/IsPendingApproval → SaleState + ReviewStatus
     /// </summary>
+    // 改动说明（v2.13.2 幻影字段修复）：对齐 API MerchantBearingDto（见 MerchantEndpoints.MerchantBearingItem）——
+    //   OldNumber/InnerDiameter/OuterDiameter/Width/Price 属幻影名，实为 BearingOldNumber/Dimensions/PriceDescription
     public record MyMerchantBearingItem(
-        Guid Id, Guid BearingId, string BearingPartNumber, string? OldNumber,
+        Guid Id, Guid BearingId, string BearingPartNumber, string? BearingOldNumber,
         string? BearingTypeName, string? BrandName,
-        decimal? InnerDiameter, decimal? OuterDiameter, decimal? Width,
-        string? Price, int SaleState, int ReviewStatus, string? RestockEta,
+        string? Dimensions, int SaleState, int ReviewStatus, string? RestockEta,
         string? PriceDescription, string? StockDescription, string? MinOrderDescription,
         string? Remarks, string? ApprovalComment);
 
@@ -583,13 +586,7 @@ public static class MerchantManageEndpoints
         string? ContactPerson, string? Phone, string? Mobile, string? Email, string? Address);
 
 
-    /// <summary>API Logo 上传响应 {url}</summary>
-    public record LogoUrlResult(string? Url);
-
-    /// <summary>
-    /// 材料预上传返回（v1.6.0 对齐 API /api/merchant/documents/upload 的 {url}）
-    /// </summary>
-    public record DocumentUrlResult(string? Url);
+    // 改动说明（v2.13.2 收敛）：Logo/材料上传响应并入统一 UrlResult（见 BffProxy.cs）
 
     /// <summary>提交替代候选请求体（v2.16.0）</summary>
     public record InterchangeSubmitRequest(
