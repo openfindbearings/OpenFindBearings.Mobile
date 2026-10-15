@@ -719,7 +719,9 @@ public static class MerchantEndpoints
 
     public record MerchantItem(
         Guid Id, string Name, string? CompanyName, string? Type,
-        bool IsVerified, string? Status, int? ProductCount, string? LogoUrl);
+        bool IsVerified, string? Status, int? ProductCount, string? LogoUrl,
+        // 改动说明（v2.13.2）：透传 API 类型中文展示名
+        string? TypeDisplay = null);
 
     // 对齐 API MerchantDto 字段（补 LogoUrl/ContactPerson/Mobile/Email/Address/Grade/FollowerCount/ProductCount）
     public record MerchantDetail(
@@ -730,7 +732,9 @@ public static class MerchantEndpoints
         // v2.5.0 商家经济：等级中文展示名透传（入驻/认证/口碑/金牌，v2.13.0 Lv3 改名口碑商家），置于尾部带缺省防位置错位
         string? GradeDisplay = null,
         // v2.6.0 商家主页：成员标记（"进入管理"横幅）与集体任务累计达成数（勋章园卡通关史）
-        bool IsMerchantMember = false, int CompletedTaskCount = 0);
+        bool IsMerchantMember = false, int CompletedTaskCount = 0,
+        // 改动说明（v2.13.2）：透传类型中文展示名（商家详情页此前直接渲染枚举名英文）
+        string? TypeDisplay = null);
 
     // 改动说明（v2.13.2 幻影字段修复）：对齐 API MerchantBearingDto——OldNumber/InnerDiameter/OuterDiameter/
     //   Width/Price 上游并不存在（实为 BearingOldNumber/Dimensions/PriceDescription），旧名反序列化恒 null，
@@ -755,10 +759,12 @@ public static class MerchantEndpoints
         Guid Id,
         string Name,
         string? CompanyName,
+        // 改动说明（v2.13.2）：Type 语义统一为枚举名，中文展示名经 TypeDisplay 透传
         string Type,
         bool IsClaimable,
         bool IsMine,
-        string StatusText);
+        string StatusText,
+        string? TypeDisplay = null);
 
     /// <summary>
     /// 待接受提名项（对齐 API PendingNominationDto）
