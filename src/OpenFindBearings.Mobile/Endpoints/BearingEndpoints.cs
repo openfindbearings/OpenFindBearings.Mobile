@@ -108,7 +108,9 @@ public static class BearingEndpoints
     public record BearingItem(
         Guid Id, string PartNumber, string? OldNumber,
         string BearingType, decimal InnerDiameter, decimal OuterDiameter, decimal Width,
-        string BrandName, string? Image3DUrl, string? Image2DUrl);
+        string BrandName, string? Image3DUrl, string? Image2DUrl,
+        // v1.6.0 数据可信联动：参数来源（Internet/OcrExtract/SeedData=仅供参考）
+        string? DataSource = null);
 
     // 改动说明（v2.13.2 幻影字段修复）：EnglishName 上游（BearingDto/BearingDetailDto）并不存在，
 //   反序列化恒 null，故移除；类型走 BearingType（API 详情已补填）
@@ -117,13 +119,16 @@ public static class BearingEndpoints
         string BearingType, decimal InnerDiameter, decimal OuterDiameter, decimal Width,
         decimal? Weight, string BrandName, string? BrandCountry,
         string? Image3DUrl, string? Image2DUrl,
-        int ViewCount, int FavoriteCount);
+        int ViewCount, int FavoriteCount,
+        // v1.6.0 数据可信联动：参数来源标注依据
+        string? DataSource = null);
 
     // v2.3.0 商城置顶卡：透传置顶态（买家侧角标 + 排序已由 API 完成）
     // v2.15.0 状态统一：IsOnSale/IsRestocking → SaleState(0=已下架/1=出售中/2=补货中)
+    // v1.6.0 数据可信联动：IsVerified=询价行动门判定（仅认证商家可发起询价）
     public record BearingMerchantItem(
         Guid MerchantId, string MerchantName, string? Price, int SaleState, string? RestockEta,
-        bool IsPinned = false, DateTime? PinnedUntil = null);
+        bool IsPinned = false, DateTime? PinnedUntil = null, bool IsVerified = false);
 
     // v2.16.0 替代品治理：透传三级替代类型与责任提示字段（BearingId=替代品对方轴承，供导航）
     public record InterchangeItem(

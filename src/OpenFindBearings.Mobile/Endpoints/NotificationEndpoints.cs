@@ -164,8 +164,45 @@ public static class NotificationEndpoints
             var data = await api.PostAsync<AffectedResult>("/api/notifications/batch-delete", new { ids = body.Ids }, token, ct);
             return Results.Ok(new { success = data != null, affected = data?.Affected ?? 0 });
         })
-        .WithName("BatchDeleteNotifications")
+.WithName("BatchDeleteNotifications")
         .WithSummary("批量删除站内信")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 读取通知偏好（v1.6.0 通知设置）：渠道开关 + 短信网关就绪标记，供"通知设置"子页回显
+        /// </summary>
+        group.MapGet("/preferences", async (
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var result = await api.GetAsync<NotificationPreferenceResponse>("/api/notifications/preferences", token, ct);
+            return Results.Ok(result ?? new NotificationPreferenceResponse(false, true, true, false));
+        })
+        .WithName("GetNotificationPreferences")
+        .WithSummary("读取通知偏好")
+        .WithDescription("当前用户通知渠道开关 + 短信网关就绪标记")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 更新通知偏好（v1.6.0 用户自勾选接收渠道；站内信恒开不在本接口范围）
+        /// </summary>
+        group.MapPut("/preferences", async (
+            NotificationPreferenceRequest body,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var ok = await api.PutVoidAsync("/api/notifications/preferences", body, token, ct);
+            return Results.Ok(new { success = ok });
+        })
+        .WithName("UpdateNotificationPreferences")
+        .WithSummary("更新通知偏好")
+        .WithDescription("保存用户勾选的短信/微信/邮件通知渠道开关")
         .RequireAuthorization();
     }
 
@@ -195,3 +232,17 @@ public record BatchIdsRequest(List<Guid> Ids);
 
 /// <summary>批量操作结果（透传 API {affected}）</summary>
 public record AffectedResult(int Affected);
+
+/// <summary>通知偏好响应（v1.6.0 对齐 API /api/notifications/preferences）</summary>
+public record NotificationPreferenceResponse(
+    bool SmsNotificationEnabled,
+    bool WeChatNotificationEnabled,
+    bool EmailNotificationEnabled,
+    /// <summary>短信通道是否就绪（未接网关时前端隐藏短信开关）</summary>
+    bool SmsGatewayReady);
+
+/// <summary>通知偏好更新请求（v1.6.0 透传体；null=不改该项）</summary>
+public record NotificationPreferenceRequest(
+    bool? SmsNotificationEnabled,
+    bool? WeChatNotificationEnabled,
+    bool? EmailNotificationEnabled);
