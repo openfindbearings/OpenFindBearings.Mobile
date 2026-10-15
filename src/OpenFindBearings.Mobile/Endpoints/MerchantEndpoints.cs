@@ -726,7 +726,8 @@ public static class MerchantEndpoints
     // 对齐 API MerchantDto 字段（补 LogoUrl/ContactPerson/Mobile/Email/Address/Grade/FollowerCount/ProductCount）
     public record MerchantDetail(
         Guid Id, string Name, string? CompanyName, string? Type,
-        string? ContactPerson, string? Phone, string? Mobile, string? Email, string? Address,
+        // v1.6.0 电话单轨：Phone/Mobile/Email 移出公共查询面（号码只在寻货撮合达成后互给）
+        string? ContactPerson, string? Address,
         bool IsVerified, string? Status, string? Grade,
         int FollowerCount, int ProductCount, string? LogoUrl,
         // v2.5.0 商家经济：等级中文展示名透传（入驻/认证/口碑/金牌，v2.13.0 Lv3 改名口碑商家），置于尾部带缺省防位置错位

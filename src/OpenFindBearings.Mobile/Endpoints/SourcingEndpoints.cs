@@ -287,6 +287,25 @@ public static class SourcingEndpoints
         .WithName("GetSourcingOpportunities")
         .WithSummary("需求信号（反向导购）")
         .RequireAuthorization();
+
+        /// <summary>
+        /// 为你匹配的寻货（v1.6.0 搜索寻货联动）：透传 X-Merchant-Id 当前商户，
+        /// 返回"定向给我的 + 匹配我在售型号的进行中寻货"，供商户工作台聚合 tab
+        /// </summary>
+        group.MapGet("/matched", async (
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var result = await api.GetAsync<List<MatchedSourcingItem>>("/api/sourcing/matched", token, ct);
+            return Results.Ok(result ?? new List<MatchedSourcingItem>());
+        })
+        .WithName("GetMatchedSourcingDemands")
+        .WithSummary("为你匹配的寻货")
+        .WithDescription("定向给我的 + 匹配我在售型号的进行中寻货（商家侧聚合面）")
+        .RequireAuthorization();
     }
 
     /// <summary>
@@ -391,14 +410,17 @@ public record SourcingDetailResponse(
     SourcingMyResponse? MyResponse,
     string? SelectedMerchantContact,
     string? PublisherContact,
+    /// <summary>是否定向询价单（v1.6.0；前端出"定向询价"徽章）</summary>
+    bool IsTargeted = false,
     // 改动说明（v2.12.0 商户名义发布）：发布方身份透传
     Guid? PublisherMerchantId = null,
     string? PublisherMerchantName = null,
     string? PublisherType = null);
 
-/// <summary>发布请求（透传体；v2.12.0 加 MerchantId=商户名义发布）</summary>
+/// <summary>发布请求（透传体；v2.12.0 加 MerchantId=商户名义发布；v1.6.0 加 TargetMerchantId=定向询价）</summary>
 public record SourcingPublishRequest(string PartNumber, Guid? BearingId, string? Brand, string? Quantity,
-    string? ExpectedDelivery, string? Region, string? Description, bool UsePoints, Guid? MerchantId = null);
+    string? ExpectedDelivery, string? Region, string? Description, bool UsePoints, Guid? MerchantId = null,
+    Guid? TargetMerchantId = null);
 
 /// <summary>应答请求（v1.5.0 多行标书透传体：报价/库存/交期按行携带）</summary>
 public record SourcingRespondItem(
@@ -477,3 +499,17 @@ public record MyOfferingResponse(
 
 /// <summary>需求信号项（v2.13.2 补代理；对齐 API /api/sourcing/opportunities 反向导购横幅）</summary>
 public record OpportunityItem(string PartNumber, int DemandCount, DateTime LatestAt);
+
+/// <summary>为你匹配的寻货项（v1.6.0；对齐 API /api/sourcing/matched，商家侧聚合面）</summary>
+public record MatchedSourcingItem(
+    Guid Id,
+    string PartNumber,
+    string? Brand,
+    string? Quantity,
+    string? Region,
+    int Status,
+    int ResponseCount,
+    DateTime CreatedAt,
+    DateTime ExpiryAt,
+    /// <summary>是否定向给我的询价单（前端出"定向询价"徽章）</summary>
+    bool IsTargeted);
