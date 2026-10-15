@@ -198,6 +198,24 @@ public static class PointsEndpoints
         .WithName("GetMerchantRanking")
         .WithSummary("商家实力月榜")
         .RequireAuthorization();
+
+        /// <summary>
+        /// 轴承币与商家金规则数据源（v2.17.0 规则数据源）：匿名代理 API /api/points/rules，
+        /// 规则页渲染用；运营改配置后前端自动跟随，消除页面硬编码数值漂移
+        /// </summary>
+        group.MapGet("/rules", async (
+            ApiClient api,
+            CancellationToken ct) =>
+        {
+            var result = await api.GetAsync<PointRulesResponse>("/api/points/rules", ct);
+            return result is null
+                ? Results.Json(new { success = false, message = "规则数据获取失败" }, statusCode: 502)
+                : Results.Ok(result);
+        })
+        .WithName("GetPointRules")
+        .WithSummary("轴承币与商家金规则")
+        .WithDescription("规则页数据源：轴承币/商家金各项数值，匿名访问")
+        .AllowAnonymous();
     }
 
     // 改动说明（v2.13.2 令牌提取统一）：委托 BffProxy.Token（含 claim 校验）
@@ -268,4 +286,20 @@ public static class PointsEndpoints
 
     /// <summary>榜单行（rank=0 表示未进前 100 单独回显）</summary>
     public record MerchantRankItem(int Rank, Guid MerchantId, string MerchantName, string GradeDisplay, int Total);
+
+    /// <summary>规则数据响应（透传 API /api/points/rules，v2.17.0 规则数据源；
+    /// 字段与 API PointRulesDto 对齐，字段缺失由前端各自兜底默认）</summary>
+    public record PointRulesResponse(
+        int[] CheckinLadder, int CheckinDoubleChance, int CheckinLegendChance,
+        int LoginAmount, int CorrectionAmount, int CorrectionDailyLimit, int ComboAmount,
+        int MinigameAmount, int MinigameDailyLimit,
+        int MilestoneProfile, int MilestoneFirstProduct, int MilestoneApproved,
+        int SourcingBonusAmount, int SourcingPublishDailyLimit, int SourcingRespondDailyLimit,
+        int FreePublishPerDay, int FreeRespondPerDay,
+        int LevelBonusMin, int LevelBonusMax, int TzOffsetHours,
+        int BuffCheckinMax, int BuffLogin, double BuffCorrectionMax,
+        int TricklePercent, int TrickleDailyCap, int TrickleMonthlyCap, int GiftSettleMonthlyCap,
+        int MerchantGradeBonusLv2, int MerchantGradeBonusLv3, int MerchantGradeBonusLv4,
+        int MerchantGradeGraceDays, int MerchantGoldPayRate,
+        int MerchantTaskWeeklyTreasury, int MerchantTaskMemberMin, int MerchantTaskMemberMax);
 }
