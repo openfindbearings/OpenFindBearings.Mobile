@@ -154,4 +154,8 @@ var authGroup = mobile.MapGroup("/auth");
 authGroup.MapAuthEndpoints();
 authGroup.RequireRateLimiting("auth");
 
+// 分享落地页（搜索寻货联动）：服务端渲染 og 卡片，匿名；链接 /s/bearing/{id}、/s/merchant/{id}
+// 由 H5 镜像 nginx 将 /s/ 反代到本 BFF，故分享链接落在 H5 域名下（不暴露技术域名）
+app.MapShareEndpoints();
+
 app.Run();
