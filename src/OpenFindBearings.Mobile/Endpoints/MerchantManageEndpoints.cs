@@ -295,45 +295,8 @@ public static class MerchantManageEndpoints
         .WithDescription("更新当前商户上下文资料（需商户管理员权限）")
         .RequireAuthorization();
 
-        /// <summary>
-        /// 提交替代候选（v2.16.0 替代品治理）：商家报候选，待平台审核后生效；
-        /// 上游失败原因（如"该替代关系已存在"）原样透传
-        /// </summary>
-        group.MapPost("/interchanges", async (
-            InterchangeSubmitRequest body,
-            ApiClient api,
-            HttpContext http,
-            CancellationToken ct) =>
-        {
-            var token = GetToken(http);
-            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
-            var call = await api.PostWithResultAsync<object>("/api/merchant/interchanges", body, token, ct);
-            return call.Success
-                ? Results.Ok(new { success = true, message = "已提交，待平台审核" })
-                : Results.Json(new { success = false, message = call.ErrorText ?? "提交失败" }, statusCode: 400);
-        })
-        .WithName("SubmitInterchange")
-        .WithSummary("提交替代候选")
-        .WithDescription("商家提交替代候选，待平台审核后生效")
-        .RequireAuthorization();
-
-        /// <summary>
-        /// 我的替代提交（v2.16.0）：含各审核状态与驳回理由
-        /// </summary>
-        group.MapGet("/interchanges", async (
-            ApiClient api,
-            HttpContext http,
-            CancellationToken ct) =>
-        {
-            var token = GetToken(http);
-            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
-            var result = await api.GetAsync<List<InterchangeSubmissionItem>>("/api/merchant/interchanges", token, ct);
-            return Results.Ok(result ?? []);
-        })
-        .WithName("GetMyInterchanges")
-        .WithSummary("我的替代提交")
-        .WithDescription("商家查看本人提交的替代候选及审核状态")
-        .RequireAuthorization();
+        // 改动说明（v2.17.0 替代品字典化）：删除 /merchant/interchanges 的提交与查询两个代理——
+        //   替代关系回归平台维护的字典；商家参与方式改为对轴承提交"替代关系"纠错（/mobile/corrections）
 
         /// <summary>
         /// 上传商户 Logo：透传 multipart 到 API 落盘，原样返回相对媒体键 /uploads/merchants/logo/...
@@ -588,20 +551,6 @@ public static class MerchantManageEndpoints
 
     // 改动说明（v2.13.2 收敛）：Logo/材料上传响应并入统一 UrlResult（见 BffProxy.cs）
 
-    /// <summary>提交替代候选请求体（v2.16.0）</summary>
-    public record InterchangeSubmitRequest(
-        Guid SourceBearingId, Guid TargetBearingId, string? InterchangeType, int? Confidence,
-        string? Source, string? Remarks, bool? IsBidirectional);
-
-    /// <summary>替代关系中的轴承精简引用（v2.16.0）</summary>
-    public record InterchangeBearingRef(
-        Guid Id, string PartNumber, string? BrandName, string? BearingType,
-        decimal InnerDiameter, decimal OuterDiameter, decimal Width);
-
-    /// <summary>商家替代提交项（对齐 API InterchangeAdminDto，v2.16.0）</summary>
-    public record InterchangeSubmissionItem(
-        Guid Id, InterchangeBearingRef SourceBearing, InterchangeBearingRef TargetBearing,
-        string? InterchangeType, string TypeLabel, int Confidence, string? Remarks,
-        bool IsBidirectional, int ReviewStatus, string ReviewStatusLabel, string? ReviewComment,
-        DateTime CreatedAt);
+    // 改动说明（v2.17.0 替代品字典化）：删除 InterchangeSubmitRequest / InterchangeBearingRef /
+    //   InterchangeSubmissionItem 三个 record（商家替代候选代理已取消）
 }
