@@ -1,4 +1,4 @@
-# Mobile BFF API 端点说明 v1.8.0
+# Mobile BFF API 端点说明 v1.8.1
 
 ## 概述
 
@@ -12,6 +12,7 @@ OpenFindBearings.Mobile 作为移动端 BFF，所有端点统一挂载在 `/mobi
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| v1.8.1 | 2026-10-18 | 替代品字典化（对齐 API《02 v1.52.0》《16-替代品治理设计 v2.0.0》）：删除 `POST/GET /mobile/merchant/interchanges` 两个代理（商家替代候选流取消，上游端点已删）；`GET /mobile/bearings/{id}/interchanges` 语义改为"该轴承全部生效替代关系"（审核态过滤随状态机删除，行为等价）。详见文末"本版增量" |
 | v1.8.0 | 2026-10-16 | 分享落地页：新增匿名端点 `GET /s/bearing/{id}`、`GET /s/merchant/{id}`——服务端渲染 HTML（注入 Open Graph og 元信息供微信/社交抓取成图文卡片）并自动跳转 H5 对应页；由 H5 镜像 nginx 将 `/s/` 反代到 BFF，故分享链接落在 H5 域名下。BFF 新增 `Share` 配置节（`H5BaseUrl`/`MediaBaseUrl`）。详见文末"本版增量" |
 | v1.7.0 | 2026-10-15 | 搜索—寻货—认证商家与数据可信联动（对齐 API《02 v1.49.0》《搜索寻货与数据可信联动设计 v1.0.0》）：新增 `GET/PUT /mobile/notifications/preferences`（通知偏好回显/保存）、`GET /mobile/sourcing/matched`（为你匹配的寻货，商家侧聚合 tab）；变更 `POST /mobile/sourcing/demands`（请求体加 `targetMerchantId` 定向询价透传）、`GET /mobile/sourcing/demands/{id}`（输出加 `isTargeted`）、`GET /mobile/bearings/{id}`（加 `dataSource`）、`GET /mobile/bearings/{id}/merchants`（加 `isVerified`）、`GET /mobile/merchants/{id}`（公共面移除 phone/mobile/email，contact 仅本商户成员自看下发）。明细见文末"本版增量" |
 | v1.6.0 | 2026-10-13 | 商家商品审核/删除 + 替代品三级治理：新增 `DELETE /mobile/merchant/bearings/{id}`（删除代理，失败原因透传）、`POST/GET /mobile/merchant/interchanges`（商家提交替代候选 / 我的提交）；变更 `GET /mobile/bearings/{id}/interchanges`（只返回已生效、富 DTO 含 typeLabel/方向）、`GET /mobile/merchant/bearings`（契约改 `saleState`+`reviewStatus`）、`GET /mobile/mall/feed`（卡片含 saleState）。明细见文末"本版增量" |
@@ -609,8 +610,7 @@ BFF 调用 API 时统一附带请求头 `X-Internal-Token`（值取自配置 `In
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | DELETE | /mobile/merchant/bearings/{id} | 商家删除商品（代理 API DELETE；出售中/补货中禁删，失败原因透传，其余物理删除） |
-| POST | /mobile/merchant/interchanges | 商家提交替代候选（源/目标型号 + 类型 + 置信度 + 双向 → 待审） |
-| GET | /mobile/merchant/interchanges | 我的替代提交（进度 / 驳回原因） |
+| ~~POST / GET~~ `/mobile/merchant/interchanges` | **已于 v1.8.1 移除**（替代品字典化）：商家不再报替代候选，改走轴承「纠错」的 `interchange` 字段（由平台核实后在替代品管理页落地） |
 
 ### 变更端点 / 字段
 | 端点 | 变更 |
@@ -668,3 +668,17 @@ BFF 调用 API 时统一附带请求头 `X-Internal-Token`（值取自配置 `In
 | `Share:MediaBaseUrl` | 媒体源 base（og:image 绝对化），如 `https://<your-media-domain>/media` |
 
 > 配套文档：《移动端登录与商户入驻设计 v1.7.35》。
+
+---
+
+## 本版增量（v1.8.1）：替代品字典化（-2 端点）
+
+| 变更 | 说明 |
+|---|---|
+| 移除 `POST /mobile/merchant/interchanges` | 商家替代候选提交代理（上游 API 端点已删） |
+| 移除 `GET /mobile/merchant/interchanges` | 我的替代提交代理（同上） |
+| `GET /mobile/bearings/{id}/interchanges` | 审核态过滤随状态机删除，语义为"该轴承全部生效替代关系"（行为等价）；仍返回 `interchangeType`/`typeLabel`/`isBidirectional`/`remarks` 与方向标注 |
+
+> 口径：替代关系回归平台维护的主数据（字典）——数据来自权威网站抓取（Sync staging 审核后入库）或平台人工维护；
+> 商家/用户参与通道为**纠错**（对轴承提交 `interchange` 字段，Taro 轴承详情「替代品」区块提供"点此报告"入口），审批不自动应用、由平台在替代品管理页落地。
+> 配套文档：《16-替代品治理设计 v2.0.0》《API 端点说明 v1.52.0》。
