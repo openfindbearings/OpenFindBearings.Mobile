@@ -82,6 +82,26 @@ public static class SourcingEndpoints
         .RequireAuthorization();
 
         /// <summary>
+        /// 转为公开招标（v1.8.0 公开招标/邀标）：邀标单进行中时由发布人放开为公开（进大厅），
+        /// 免去取消重建的额度损耗
+        /// </summary>
+        group.MapPost("/demands/{id}/publish-public", async (
+            string id,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+
+            var result = await api.PostWithResultAsync<object>($"/api/sourcing/demands/{id}/publish-public", new { }, token, ct);
+            return ProxyResult(result, "转为公开失败");
+        })
+        .WithName("PublishSourcingDemandPublic")
+        .WithSummary("转为公开招标")
+        .RequireAuthorization();
+
+        /// <summary>
         /// 应答寻货（登录+当前商户；重复应答=更新）
         /// </summary>
         group.MapPost("/demands/{id}/respond", async (
@@ -304,7 +324,7 @@ public static class SourcingEndpoints
         })
         .WithName("GetMatchedSourcingDemands")
         .WithSummary("为你匹配的寻货")
-        .WithDescription("定向给我的 + 匹配我在售型号的进行中寻货（商家侧聚合面）")
+        .WithDescription("邀标给我的 + 匹配我在售型号的进行中公开招标单（商家侧聚合面）")
         .RequireAuthorization();
     }
 
@@ -410,17 +430,22 @@ public record SourcingDetailResponse(
     SourcingMyResponse? MyResponse,
     string? SelectedMerchantContact,
     string? PublisherContact,
-    /// <summary>是否定向询价单（v1.6.0；前端出"定向询价"徽章）</summary>
-    bool IsTargeted = false,
+    /// <summary>是否邀标单（v1.8.0；原 IsTargeted，前端出"邀标"徽章）</summary>
+    bool IsPrivate = false,
+    /// <summary>邀标收件人家数（v1.8.0；前端出"邀标(N家)"文案）</summary>
+    int InvitedCount = 0,
     // 改动说明（v2.12.0 商户名义发布）：发布方身份透传
     Guid? PublisherMerchantId = null,
     string? PublisherMerchantName = null,
     string? PublisherType = null);
 
-/// <summary>发布请求（透传体；v2.12.0 加 MerchantId=商户名义发布；v1.6.0 加 TargetMerchantId=定向询价）</summary>
+/// <summary>发布请求（透传体；v2.12.0 加 MerchantId=商户名义发布；v1.8.0 以 Visibility+InvitedMerchantIds 取代 TargetMerchantId）</summary>
 public record SourcingPublishRequest(string PartNumber, Guid? BearingId, string? Brand, string? Quantity,
     string? ExpectedDelivery, string? Region, string? Description, bool UsePoints, Guid? MerchantId = null,
-    Guid? TargetMerchantId = null);
+    /// <summary>曝光范围：0=公开招标（默认，进大厅）/ 1=邀标（不进大厅，只推收件人）</summary>
+    int Visibility = 0,
+    /// <summary>邀标收件人勾选（空=全部匹配的认证在售商家；仅 Visibility=1 时有意义）</summary>
+    List<Guid>? InvitedMerchantIds = null);
 
 /// <summary>应答请求（v1.5.0 多行标书透传体：报价/库存/交期按行携带）</summary>
 public record SourcingRespondItem(
@@ -452,7 +477,10 @@ public record SourcingMyDemandItem(
     // 改动说明（v2.12.0 商户名义发布）：发布身份徽章透传
     Guid? PublisherMerchantId = null,
     string? PublisherMerchantName = null,
-    string? PublisherType = null);
+    string? PublisherType = null,
+    // 改动说明（v1.8.0 公开招标/邀标）：曝光范围透传（"我的寻货"卡片出"邀标(N家)/转为公开招标"）
+    bool IsPrivate = false,
+    int InvitedCount = 0);
 
 /// <summary>商户名义发布的寻货项（v2.12.0 商户工作台"寻货管理-我发布的"，含经办人）</summary>
 public record SourcingMerchantDemandItem(
@@ -469,7 +497,10 @@ public record SourcingMerchantDemandItem(
     /// <summary>经办人昵称（管理操作仅经办人本人，其他成员只读）</summary>
     string? PublisherName = null,
     /// <summary>当前用户是否经办人（前端出/藏管理按钮）</summary>
-    bool IsMine = false);
+    bool IsMine = false,
+    // 改动说明（v1.8.0 公开招标/邀标）：曝光范围透传（本店寻货卡片出"邀标(N家)"）
+    bool IsPrivate = false,
+    int InvitedCount = 0);
 
 /// <summary>商户应答记录项（含需求快照；v1.5.0 型号行随应答透出）</summary>
 public record SourcingMerchantResponseItem(
@@ -511,5 +542,5 @@ public record MatchedSourcingItem(
     int ResponseCount,
     DateTime CreatedAt,
     DateTime ExpiryAt,
-    /// <summary>是否定向给我的询价单（前端出"定向询价"徽章）</summary>
-    bool IsTargeted);
+    /// <summary>是否邀标给我的单（v1.8.0；原 IsTargeted，前端出"邀标"徽章）</summary>
+    bool IsPrivate);
