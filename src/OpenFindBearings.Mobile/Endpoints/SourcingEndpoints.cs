@@ -148,7 +148,7 @@ public static class SourcingEndpoints
         .RequireAuthorization();
 
         /// <summary>
-        /// 选定应答（发布人；成功后双方联系方式解锁）
+        /// 选定应答（发布人；选定后解锁商家联系方式——v2.18.0 单向，需求方号码不下发商家）
         /// </summary>
         group.MapPost("/demands/{id}/select", async (
             string id,
@@ -165,6 +165,27 @@ public static class SourcingEndpoints
         })
         .WithName("SelectSourcingResponse")
         .WithSummary("选定应答")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 提交/更新成交回执（v2.18.0 撮合成交链）：需求方对被选定合作一键回填洽谈结果，
+        /// 返回是否计入商家卡级与未计入原因
+        /// </summary>
+        group.MapPost("/responses/{id}/feedback", async (
+            string id,
+            SourcingFeedbackRequest body,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+
+            var result = await api.PostWithResultAsync<object>($"/api/sourcing/responses/{id}/feedback", body, token, ct);
+            return ProxyResult(result, "回执提交失败");
+        })
+        .WithName("SubmitSourcingDealFeedback")
+        .WithSummary("提交成交回执")
         .RequireAuthorization();
 
         /// <summary>
@@ -334,6 +355,118 @@ public static class SourcingEndpoints
         .WithSummary("为你匹配的寻货")
         .WithDescription("邀标给我的 + 匹配我在售型号的进行中公开招标单（商家侧聚合面）")
         .RequireAuthorization();
+
+        // ============ 撮合会话代理（v2.18.0 T1 会话） ============
+
+        /// <summary>
+        /// 会话列表（需求方与商家方两视角合并，含未读数与单据状态）
+        /// </summary>
+        group.MapGet("/conversations", async (
+            int page,
+            int pageSize,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+
+            var qs = $"?page={(page <= 0 ? 1 : page)}&pageSize={(pageSize is > 0 and <= 50 ? pageSize : 20)}";
+            var result = await api.GetAsync<SourcingConversationListResponse>($"/api/sourcing/conversations{qs}", token, ct);
+            return Results.Ok(result ?? new SourcingConversationListResponse(new List<SourcingConversationItem>(), 0));
+        })
+        .WithName("GetSourcingConversations")
+        .WithSummary("撮合会话列表")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 会话总未读数（首页消息角标数据源）
+        /// </summary>
+        group.MapGet("/conversations/unread-count", async (
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+
+            var result = await api.GetAsync<UnreadCountResponse>("/api/sourcing/conversations/unread-count", token, ct);
+            return Results.Ok(result ?? new UnreadCountResponse(0));
+        })
+        .WithName("GetSourcingConversationUnreadCount")
+        .WithSummary("会话总未读数")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 会话消息（时间正序；before 游标翻历史）
+        /// </summary>
+        group.MapGet("/conversations/{demandId}/{merchantId}/messages", async (
+            string demandId,
+            string merchantId,
+            string? before,
+            int limit,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+
+            var qs = $"?limit={(limit is > 0 and <= 50 ? limit : 30)}";
+            if (!string.IsNullOrWhiteSpace(before))
+                qs += $"&before={Uri.EscapeDataString(before)}";
+            var result = await api.GetAsync<SourcingMessagesResponse>(
+                $"/api/sourcing/conversations/{demandId}/{merchantId}/messages{qs}", token, ct);
+            return result == null
+                ? Results.Json(new { success = false, message = "会话不存在" }, statusCode: 404)
+                : Results.Ok(result);
+        })
+        .WithName("GetSourcingConversationMessages")
+        .WithSummary("会话消息")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 发送会话消息（会话懒创建；单据结束后拒发）
+        /// </summary>
+        group.MapPost("/conversations/{demandId}/{merchantId}/messages", async (
+            string demandId,
+            string merchantId,
+            SendSourcingMessageRequest body,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+
+            var result = await api.PostWithResultAsync<object>(
+                $"/api/sourcing/conversations/{demandId}/{merchantId}/messages", body, token, ct);
+            return ProxyResult(result, "发送失败");
+        })
+        .WithName("SendSourcingMessage")
+        .WithSummary("发送会话消息")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 标记会话已读
+        /// </summary>
+        group.MapPost("/conversations/{demandId}/{merchantId}/read", async (
+            string demandId,
+            string merchantId,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+
+            var result = await api.PostWithResultAsync<object>(
+                $"/api/sourcing/conversations/{demandId}/{merchantId}/read", new { }, token, ct);
+            return ProxyResult(result, "标记已读失败");
+        })
+        .WithName("MarkSourcingConversationRead")
+        .WithSummary("标记会话已读")
+        .RequireAuthorization();
     }
 
     /// <summary>
@@ -437,7 +570,6 @@ public record SourcingDetailResponse(
     List<SourcingResponseDetail>? Responses,
     SourcingMyResponse? MyResponse,
     string? SelectedMerchantContact,
-    string? PublisherContact,
     /// <summary>是否邀标单（v1.8.0；原 IsTargeted，前端出"邀标"徽章）</summary>
     bool IsPrivate = false,
     /// <summary>邀标收件人家数（v1.8.0；前端出"邀标(N家)"文案）</summary>
@@ -445,7 +577,57 @@ public record SourcingDetailResponse(
     // 改动说明（v2.12.0 商户名义发布）：发布方身份透传
     Guid? PublisherMerchantId = null,
     string? PublisherMerchantName = null,
-    string? PublisherType = null);
+    string? PublisherType = null,
+    // 改动说明（v2.18.0 电话单向）：删除 PublisherContact（商家永不下发需求方号码）；
+    // 新增解锁时刻（商家可见"买家已获取你的联系方式"）与成交回执状态（仅发布方可回填）
+    DateTime? ContactUnlockedAt = null,
+    Guid? SelectedResponseId = null,
+    bool CanFeedback = false,
+    SourcingMyFeedback? MyFeedback = null);
+
+/// <summary>成交回执请求（v2.18.0 透传体）</summary>
+/// <param name="Outcome">洽谈结果（0=谈成；1=没货；2=加价；3=拖延；4=其他）</param>
+/// <param name="Reason">补充说明（可选）</param>
+public record SourcingFeedbackRequest(int Outcome, string? Reason);
+
+/// <summary>我的成交回执（详情回显，v2.18.0）</summary>
+public record SourcingMyFeedback(int Outcome, string? Reason, DateTime? At, bool Counted);
+
+/// <summary>会话列表项（v2.18.0，对齐 API /api/sourcing/conversations items）</summary>
+public record SourcingConversationItem(
+    Guid ConversationId,
+    Guid DemandId,
+    Guid MerchantId,
+    string Role,
+    string? CounterpartyName,
+    string? PartNumber,
+    int? DemandStatus,
+    bool DemandReadOnly,
+    DateTime? LastMessageAt,
+    string? LastMessagePreview,
+    int UnreadCount);
+
+/// <summary>会话列表响应</summary>
+public record SourcingConversationListResponse(List<SourcingConversationItem> Items, int Total);
+
+/// <summary>会话消息项</summary>
+public record SourcingMessageItem(Guid Id, int SenderSide, bool Mine, string Content, DateTime CreatedAt);
+
+/// <summary>会话消息响应（ReadOnly=true 表示单据已结束，会话只读）</summary>
+public record SourcingMessagesResponse(
+    Guid? ConversationId,
+    Guid DemandId,
+    Guid MerchantId,
+    string Role,
+    bool ReadOnly,
+    bool HasMore,
+    List<SourcingMessageItem> Messages);
+
+/// <summary>发送会话消息请求</summary>
+public record SendSourcingMessageRequest(string Content);
+
+/// <summary>未读计数响应（会话与系统消息各一，v2.18.0 消息中心两类）</summary>
+public record UnreadCountResponse(int UnreadCount);
 
 /// <summary>发布请求（透传体；v2.12.0 加 MerchantId=商户名义发布；v1.8.0 以 Visibility+InvitedMerchantIds 取代 TargetMerchantId）</summary>
 public record SourcingPublishRequest(string PartNumber, Guid? BearingId, string? Brand, string? Quantity,
