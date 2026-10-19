@@ -310,7 +310,8 @@ public static class SourcingEndpoints
 
         /// <summary>
         /// 为你匹配的寻货（v1.6.0 搜索寻货联动）：透传 X-Merchant-Id 当前商户，
-        /// 返回"定向给我的 + 匹配我在售型号的进行中寻货"，供商户工作台聚合 tab
+        /// 返回"邀标给我的 + 匹配我在售型号的进行中寻货"，供商户工作台聚合 tab
+        /// 改动说明（v1.8.2）："定向给我的"旧措辞统一为"邀标给我的"（邀标单进收件商家的聚合面是硬承诺）
         /// </summary>
         group.MapGet("/matched", async (
             ApiClient api,

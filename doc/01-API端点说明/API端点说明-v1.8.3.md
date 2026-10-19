@@ -1,4 +1,4 @@
-# Mobile BFF API 端点说明 v1.8.2
+# Mobile BFF API 端点说明 v1.8.3
 
 ## 概述
 
@@ -12,6 +12,7 @@ OpenFindBearings.Mobile 作为移动端 BFF，所有端点统一挂载在 `/mobi
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| v1.8.3 | 2026-10-19 | 随 API 02 v1.55.0 的邀标边界补全（**BFF 无路由/字段改动**）：寻货发布响应字段由 `notifiedMerchantCount` 更名 `recipientMerchantCount`——BFF 以 `PostWithResultAsync<object>` 原样透传，前端读取端已同步更名；`GET /mobile/sourcing/matched` 的邀标聚合口径、`POST /mobile/sourcing/demands` 的 `visibility`/`invitedMerchantIds` 透传与 `publish-public` 代理行为均不变；分享落地页描述文案「查看在售商家并询价」改「查看在售商家并邀请报价」（单据类型只有公开招标/邀标，`/s/bearing/{id}` 与 `/s/merchant/{id}` 不变） |
 | v1.8.2 | 2026-10-19 | 寻货公开招标/邀标（对齐 API《02 v1.54.0》《搜索寻货与数据可信联动设计 v1.2.0》）：新增 `POST /mobile/sourcing/demands/{id}/publish-public` 代理（转为公开招标）；`POST /mobile/sourcing/demands` 请求体 `targetMerchantId` → `visibility`+`invitedMerchantIds` 透传、响应 `matchedMerchantCount` → `notifiedMerchantCount` 透传；寻货详情/我的寻货/商户寻货/`matched`/`opportunities` 透传 `isPrivate`。详见文末"本版增量" |
 | v1.8.1 | 2026-10-18 | 替代品字典化（对齐 API《02 v1.52.0》《16-替代品治理设计 v2.0.0》）：删除 `POST/GET /mobile/merchant/interchanges` 两个代理（商家替代候选流取消，上游端点已删）；`GET /mobile/bearings/{id}/interchanges` 语义改为"该轴承全部生效替代关系"（审核态过滤随状态机删除，行为等价）。详见文末"本版增量" |
 | v1.8.0 | 2026-10-16 | 分享落地页：新增匿名端点 `GET /s/bearing/{id}`、`GET /s/merchant/{id}`——服务端渲染 HTML（注入 Open Graph og 元信息供微信/社交抓取成图文卡片）并自动跳转 H5 对应页；由 H5 镜像 nginx 将 `/s/` 反代到 BFF，故分享链接落在 H5 域名下。BFF 新增 `Share` 配置节（`H5BaseUrl`/`MediaBaseUrl`）。详见文末"本版增量" |
