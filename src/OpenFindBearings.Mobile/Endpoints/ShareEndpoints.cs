@@ -39,7 +39,8 @@ public static class ShareEndpoints
             var brandPart = string.IsNullOrWhiteSpace(detail.BrandName) ? string.Empty : " · " + detail.BrandName;
             var countPart = verified > 0 ? $" · {verified}家认证商家真实有货" : string.Empty;
             var title = $"{detail.PartNumber}{brandPart}{countPart}";
-            var desc = $"{detail.BearingType}轴承｜内径 {detail.InnerDiameter} 外径 {detail.OuterDiameter} 宽度 {detail.Width} mm｜查看在售商家并询价";
+            // 改动说明（v1.8.2 口径统一）：文案由"并询价"改为"并邀请报价"——单据类型只有公开招标/邀标，"询价"不再作为入口名
+            var desc = $"{detail.BearingType}轴承｜内径 {detail.InnerDiameter} 外径 {detail.OuterDiameter} 宽度 {detail.Width} mm｜查看在售商家并邀请报价";
             var image = AbsoluteImage(config, detail.Image3DUrl ?? detail.Image2DUrl);
             // view=supply 透传到 H5（货源视角：在售商家置顶）
             var target = $"{H5Base(config)}/#/pages/home/bearingDetail?id={id}{(view == "supply" ? "&view=supply" : string.Empty)}";
