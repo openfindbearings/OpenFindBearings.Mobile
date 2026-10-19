@@ -1,4 +1,4 @@
-# Mobile BFF API 端点说明 v1.8.3
+# Mobile BFF API 端点说明 v1.8.4
 
 ## 概述
 
@@ -12,6 +12,7 @@ OpenFindBearings.Mobile 作为移动端 BFF，所有端点统一挂载在 `/mobi
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| v1.8.4 | 2026-10-19 | 随 API 02 v1.56.0 的寻货边界收口（**BFF 无新增路由**）：① `POST /mobile/sourcing/demands` 透传客户端 `Idempotency-Key` 请求头（`SourcingEndpoints` 读头 → `ApiClient.PostWithResultAsync` 新增可选 `headers` 参数转发；缺省不带头）——上游据此去重，网络重试/连续点击重放返回原单、不重复扣分；② `DELETE /mobile/sourcing/demands/{id}/respond` 撤销语义由"删行"改"置 Cancelled"，BFF 无感知（原样透传结果）；③ 治理输出透传 `isDeleted`（Admin 侧使用）。详见文末"本版增量" |
 | v1.8.3 | 2026-10-19 | 随 API 02 v1.55.0 的邀标边界补全（**BFF 无路由/字段改动**）：寻货发布响应字段由 `notifiedMerchantCount` 更名 `recipientMerchantCount`——BFF 以 `PostWithResultAsync<object>` 原样透传，前端读取端已同步更名；`GET /mobile/sourcing/matched` 的邀标聚合口径、`POST /mobile/sourcing/demands` 的 `visibility`/`invitedMerchantIds` 透传与 `publish-public` 代理行为均不变；分享落地页描述文案「查看在售商家并询价」改「查看在售商家并邀请报价」（单据类型只有公开招标/邀标，`/s/bearing/{id}` 与 `/s/merchant/{id}` 不变） |
 | v1.8.2 | 2026-10-19 | 寻货公开招标/邀标（对齐 API《02 v1.54.0》《搜索寻货与数据可信联动设计 v1.2.0》）：新增 `POST /mobile/sourcing/demands/{id}/publish-public` 代理（转为公开招标）；`POST /mobile/sourcing/demands` 请求体 `targetMerchantId` → `visibility`+`invitedMerchantIds` 透传、响应 `matchedMerchantCount` → `notifiedMerchantCount` 透传；寻货详情/我的寻货/商户寻货/`matched`/`opportunities` 透传 `isPrivate`。详见文末"本版增量" |
 | v1.8.1 | 2026-10-18 | 替代品字典化（对齐 API《02 v1.52.0》《16-替代品治理设计 v2.0.0》）：删除 `POST/GET /mobile/merchant/interchanges` 两个代理（商家替代候选流取消，上游端点已删）；`GET /mobile/bearings/{id}/interchanges` 语义改为"该轴承全部生效替代关系"（审核态过滤随状态机删除，行为等价）。详见文末"本版增量" |
@@ -697,3 +698,16 @@ BFF 调用 API 时统一附带请求头 `X-Internal-Token`（值取自配置 `In
 
 > 口径：BFF 只做透传，不承载"谁能看邀标单"的判定——可见性由 API 侧统一裁决（邀标单非收件商家取详情返回 404）。
 > 配套文档：《搜索寻货与数据可信联动设计 v1.2.0》《API 端点说明 v1.54.0》《移动端登录与商户入驻设计 v1.7.38》。
+
+---
+
+## 本版增量（v1.8.4）：寻货边界收口（无新增路由）
+
+| 端点 | 变更 |
+|---|---|
+| `POST /mobile/sourcing/demands` | **透传 `Idempotency-Key`**：`SourcingEndpoints` 读入站请求头，非空时以自定义头转发上游（`ApiClient.PostWithResultAsync` 新增可选 `headers` 参数——带头时走显式 `HttpRequestMessage` + `JsonContent.Create`，与 `PostAsJsonAsync` 同用默认 JSON 选项）；缺省不带头，行为与旧版一致 |
+| `DELETE /mobile/sourcing/demands/{id}/respond` | 上游撤销由"物理删行"改"置 `Cancelled` 留行"（当日额度不回退、可重新应答），BFF 无需改动（原样透传成功/失败消息） |
+| 治理侧 | `isDeleted` 由 API 直接下发（Admin 服务→API），不经 BFF |
+
+> 说明：幂等键由前端生成（Taro `genPublishIdempotencyKey`，页面会话内稳定复用、发布成功后轮换），BFF 只透传不生成；同一 key 的重放由上游返回原单（不重复建单/扣分）。
+> 配套文档：《API 端点说明 v1.56.0》《寻货功能设计 v1.8.2》《移动端登录与商户入驻设计 v1.7.40》。

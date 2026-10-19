@@ -160,16 +160,33 @@ public class ApiClient
 
     /// <summary>
     /// 带错误体透传的 POST（改动说明：/apply 等需要感知 4xx 状态码/结构化错误码的端点用；
-    ///   旧 PostAsync 吞错返 null，无法把 API 的 InvalidOperationException 或 409 冲突转给前端）
+    ///   旧 PostAsync 吞错返 null，无法把 API 的 InvalidOperationException 或 409 冲突转给前端）。
+    /// 改动说明（v1.8.4 发布幂等）：新增 headers 可选参数（追加在 ct 之后以免破坏既有位置参数调用），
+    ///   供寻货发布透传客户端 Idempotency-Key——上游据此去重，重放返回原单不重复扣分
     /// </summary>
     public async Task<ApiCallResult<T>> PostWithResultAsync<T>(
-        string path, object body, string? accessToken = null, CancellationToken ct = default) where T : class
+        string path, object body, string? accessToken = null, CancellationToken ct = default,
+        IReadOnlyDictionary<string, string>? headers = null) where T : class
     {
         HttpResponseMessage response;
         try
         {
             var client = CreateApiClient(accessToken);
-            response = await client.PostAsJsonAsync(path, body, ct);
+            if (headers is { Count: > 0 })
+            {
+                // 有自定义头时走显式请求消息（JsonContent.Create 与 PostAsJsonAsync 同用默认 JSON 选项）
+                using var request = new HttpRequestMessage(HttpMethod.Post, path)
+                {
+                    Content = JsonContent.Create(body)
+                };
+                foreach (var kv in headers)
+                    request.Headers.TryAddWithoutValidation(kv.Key, kv.Value);
+                response = await client.SendAsync(request, ct);
+            }
+            else
+            {
+                response = await client.PostAsJsonAsync(path, body, ct);
+            }
         }
         catch (Exception ex)
         {

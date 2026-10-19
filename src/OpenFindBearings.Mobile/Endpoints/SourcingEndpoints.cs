@@ -74,7 +74,14 @@ public static class SourcingEndpoints
             var token = GetToken(http);
             if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
 
-            var result = await api.PostWithResultAsync<object>("/api/sourcing/demands", body, token, ct);
+            // 改动说明（v1.8.4 发布幂等）：透传客户端 Idempotency-Key（缺省则原样不传）——
+            //   上游按"同发布人同 key"去重，网络重试/双击不会重复建单或重复扣分
+            var idemKey = http.Request.Headers["Idempotency-Key"].FirstOrDefault();
+            var headers = string.IsNullOrWhiteSpace(idemKey)
+                ? null
+                : new Dictionary<string, string> { ["Idempotency-Key"] = idemKey! };
+
+            var result = await api.PostWithResultAsync<object>("/api/sourcing/demands", body, token, ct, headers);
             return ProxyResult(result, "发布失败");
         })
         .WithName("PublishSourcingDemand")
