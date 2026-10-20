@@ -262,12 +262,20 @@ public static class PointsEndpoints
     /// <summary>段位档（reached=已达档；bonusClaimed=该档升档礼终身已领）</summary>
     public record PointLadderItem(int Level, string Name, int MinTotalEarned, int LevelUpBonus, bool Reached, bool BonusClaimed);
 
-    /// <summary>商家等级详情（透传 API /api/points/merchant-grade，v2.13.0 商家等级页）</summary>
+    /// <summary>商家卡级详情（透传 API /api/points/merchant-grade，v2.13.0 商家卡级页）</summary>
+    /// 改动说明（v1.57.1 修 bug）：补 dealCount/windowDays/onSaleMin/silverDealMin/goldDealMin/nextTier，
+    ///   并删除随金库退出定级而失效的 TreasuryEarned/Lv3OnSaleMin/Lv4OnSaleMin/Lv4TreasuryMin 死字段——
+    ///   原契约缺字段致 Taro 卡级页把阈值渲染成 undefined
     public record MerchantGradeResponse(Guid MerchantId, string? MerchantName, int Grade, int Rank, string GradeDisplay,
-        bool IsVerified, int OnSaleCount, int TreasuryEarned,
-        int Lv3OnSaleMin, int Lv4OnSaleMin, int Lv4TreasuryMin,
+        bool IsVerified, int OnSaleCount, int DealCount, int WindowDays,
+        int OnSaleMin, int SilverDealMin, int GoldDealMin,
         int BonusLv2, int BonusLv3, int BonusLv4, List<int> ClaimedRanks,
+        MerchantGradeNextTier? NextTier,
         DateTime? GraceUntil, List<string> Labels);
+
+    /// <summary>卡级"距下一档"（API nextTier；金卡为 null）</summary>
+    public record MerchantGradeNextTier(int Grade, string Label, int RequiredOnSale, int RequiredDeals,
+        bool MetOnSale, bool MetDeals);
 
     /// <summary>商家福利卡（透传 API /api/points/merchant-buff，v2.5.0）</summary>
     // v2.12.0 等级玩法：透传下一档升档礼金额（gradeUpBonus，商家金终身一次）与本店保级截止钟

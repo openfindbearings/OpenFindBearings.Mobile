@@ -540,7 +540,10 @@ public record SourcingResponseDetail(
     DateTime CreatedAt,
     // v2.12.0 等级玩法铭牌曝光：经办人段位（号+名，透传自 API）
     int ResponderLevel = 1,
-    string? ResponderLevelName = null);
+    string? ResponderLevelName = null,
+    // 改动说明（v1.57.1 双徽章并列）：透传商家卡级（与"已认证"并列；0=未知档）
+    int MerchantGrade = 0,
+    string? MerchantGradeDisplay = null);
 
 /// <summary>查看者自己商户的应答（其余人不可见他人报价）</summary>
 public record SourcingMyResponse(
@@ -591,7 +594,9 @@ public record SourcingDetailResponse(
 public record SourcingFeedbackRequest(int Outcome, string? Reason);
 
 /// <summary>我的成交回执（详情回显，v2.18.0）</summary>
-public record SourcingMyFeedback(int Outcome, string? Reason, DateTime? At, bool Counted);
+    public record SourcingMyFeedback(int Outcome, string? Reason, DateTime? At, bool Counted,
+        // 改动说明（v1.57.1）：未计分原因（反刷留痕，如"疑似关联方"），前端提示用
+        string? Note = null);
 
 /// <summary>会话列表项（v2.18.0，对齐 API /api/sourcing/conversations items）</summary>
 public record SourcingConversationItem(
