@@ -1,4 +1,4 @@
-﻿# Mobile BFF API 端点说明 v1.8.6
+﻿# Mobile BFF API 端点说明 v1.8.7
 
 ## 概述
 
@@ -12,11 +12,12 @@ OpenFindBearings.Mobile 作为移动端 BFF，所有端点统一挂载在 `/mobi
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| v1.8.7 | 2026-10-20 | 随 API 02 v1.57.2（**术语统一，BFF 无路由/字段变更**）：文档与代码注释中「公开招标 / 邀标」改为「公开 / 邀请」，`/mobile/sourcing/*` 代理路径、请求体 `visibility`/`invitedMerchantIds` 与响应字段均不变 |
 | v1.8.6 | 2026-10-20 | 随 API 02 v1.57.1（寻货收口修复，**BFF 无新增路由**）：① `GET /mobile/bearings/{id}/merchants` 透传商家卡级 `grade`/`gradeDisplay`（与「已认证」徽章并列，认证是类型、卡级是等级）；② `GET /mobile/sourcing/demands/{id}` 的 `myFeedback` 增 `note`（未计分原因）；③ 应答摘要透传 `merchantGrade`/`merchantGradeDisplay`；④ 会话只读口径与未读聚合计数随上游调整，BFF 原样透传。详见文末"本版增量" |
 | v1.8.5 | 2026-10-19 | 随 API 02 v1.57.0（商家卡级 + 成交回执 + T1 会话 + 电话单向）：寻货组新增 5 个代理——`POST /mobile/sourcing/responses/{id}/feedback`（成交回执）、`GET /mobile/sourcing/conversations`（会话列表，含双侧视角与未读）、`GET /mobile/sourcing/conversations/unread-count`、`GET|POST /mobile/sourcing/conversations/{demandId}/{merchantId}/messages`（分页拉取 / 发送）、`POST /mobile/sourcing/conversations/{demandId}/{merchantId}/read`（标记已读）。契约变化：`GET /mobile/sourcing/demands/{id}` 不再下发 `publisherContact`（电话单向，商家侧永不返回需求方号码），改下发 `contactUnlockedAt`/`selectedResponseId`/`canFeedback`/`myFeedback`；`GET /mobile/sourcing/opportunities` 商家可见商机不含需求方号码；`GET /mobile/points/merchant-grade` 透传 `dealCount`/`windowDays`/`onSaleMin`/`silverDealMin`/`goldDealMin`/`nextTier`。详见文末"本版增量" |
 | v1.8.4 | 2026-10-19 | 随 API 02 v1.56.0 的寻货边界收口（**BFF 无新增路由**）：① `POST /mobile/sourcing/demands` 透传客户端 `Idempotency-Key` 请求头（`SourcingEndpoints` 读头 → `ApiClient.PostWithResultAsync` 新增可选 `headers` 参数转发；缺省不带头）——上游据此去重，网络重试/连续点击重放返回原单、不重复扣分；② `DELETE /mobile/sourcing/demands/{id}/respond` 撤销语义由"删行"改"置 Cancelled"，BFF 无感知（原样透传结果）；③ 治理输出透传 `isDeleted`（Admin 侧使用）。详见文末"本版增量" |
-| v1.8.3 | 2026-10-19 | 随 API 02 v1.55.0 的邀标边界补全（**BFF 无路由/字段改动**）：寻货发布响应字段由 `notifiedMerchantCount` 更名 `recipientMerchantCount`——BFF 以 `PostWithResultAsync<object>` 原样透传，前端读取端已同步更名；`GET /mobile/sourcing/matched` 的邀标聚合口径、`POST /mobile/sourcing/demands` 的 `visibility`/`invitedMerchantIds` 透传与 `publish-public` 代理行为均不变；分享落地页描述文案「查看在售商家并询价」改「查看在售商家并邀请报价」（单据类型只有公开招标/邀标，`/s/bearing/{id}` 与 `/s/merchant/{id}` 不变） |
-| v1.8.2 | 2026-10-19 | 寻货公开招标/邀标（对齐 API《02 v1.54.0》《搜索寻货与数据可信联动设计 v1.2.0》）：新增 `POST /mobile/sourcing/demands/{id}/publish-public` 代理（转为公开招标）；`POST /mobile/sourcing/demands` 请求体 `targetMerchantId` → `visibility`+`invitedMerchantIds` 透传、响应 `matchedMerchantCount` → `notifiedMerchantCount` 透传；寻货详情/我的寻货/商户寻货/`matched`/`opportunities` 透传 `isPrivate`。详见文末"本版增量" |
+| v1.8.3 | 2026-10-19 | 随 API 02 v1.55.0 的邀请边界补全（**BFF 无路由/字段改动**）：寻货发布响应字段由 `notifiedMerchantCount` 更名 `recipientMerchantCount`——BFF 以 `PostWithResultAsync<object>` 原样透传，前端读取端已同步更名；`GET /mobile/sourcing/matched` 的邀请聚合口径、`POST /mobile/sourcing/demands` 的 `visibility`/`invitedMerchantIds` 透传与 `publish-public` 代理行为均不变；分享落地页描述文案「查看在售商家并询价」改「查看在售商家并邀请报价」（单据类型只有公开/邀请，`/s/bearing/{id}` 与 `/s/merchant/{id}` 不变） |
+| v1.8.2 | 2026-10-19 | 寻货公开/邀请（对齐 API《02 v1.54.0》《搜索寻货与数据可信联动设计 v1.2.0》）：新增 `POST /mobile/sourcing/demands/{id}/publish-public` 代理（转为公开）；`POST /mobile/sourcing/demands` 请求体 `targetMerchantId` → `visibility`+`invitedMerchantIds` 透传、响应 `matchedMerchantCount` → `notifiedMerchantCount` 透传；寻货详情/我的寻货/商户寻货/`matched`/`opportunities` 透传 `isPrivate`。详见文末"本版增量" |
 | v1.8.1 | 2026-10-18 | 替代品字典化（对齐 API《02 v1.52.0》《16-替代品治理设计 v2.0.0》）：删除 `POST/GET /mobile/merchant/interchanges` 两个代理（商家替代候选流取消，上游端点已删）；`GET /mobile/bearings/{id}/interchanges` 语义改为"该轴承全部生效替代关系"（审核态过滤随状态机删除，行为等价）。详见文末"本版增量" |
 | v1.8.0 | 2026-10-16 | 分享落地页：新增匿名端点 `GET /s/bearing/{id}`、`GET /s/merchant/{id}`——服务端渲染 HTML（注入 Open Graph og 元信息供微信/社交抓取成图文卡片）并自动跳转 H5 对应页；由 H5 镜像 nginx 将 `/s/` 反代到 BFF，故分享链接落在 H5 域名下。BFF 新增 `Share` 配置节（`H5BaseUrl`/`MediaBaseUrl`）。详见文末"本版增量" |
 | v1.7.0 | 2026-10-15 | 搜索—寻货—认证商家与数据可信联动（对齐 API《02 v1.49.0》《搜索寻货与数据可信联动设计 v1.0.0》）：新增 `GET/PUT /mobile/notifications/preferences`（通知偏好回显/保存）、`GET /mobile/sourcing/matched`（为你匹配的寻货，商家侧聚合 tab）；变更 `POST /mobile/sourcing/demands`（请求体加 `targetMerchantId` 定向询价透传）、`GET /mobile/sourcing/demands/{id}`（输出加 `isTargeted`）、`GET /mobile/bearings/{id}`（加 `dataSource`）、`GET /mobile/bearings/{id}/merchants`（加 `isVerified`）、`GET /mobile/merchants/{id}`（公共面移除 phone/mobile/email，contact 仅本商户成员自看下发）。明细见文末"本版增量" |
@@ -690,15 +691,15 @@ BFF 调用 API 时统一附带请求头 `X-Internal-Token`（值取自配置 `In
 
 ---
 
-## 本版增量（v1.8.2）：寻货公开招标 / 邀标（+1 端点）
+## 本版增量（v1.8.2）：寻货公开 / 邀请（+1 端点）
 
 | 端点 | 变更 |
 |---|---|
-| `POST /mobile/sourcing/demands/{id}/publish-public` | **新增代理**：转为公开招标（邀标单进行中时由发布人放开为公开）；`PostWithResultAsync<object>` 原样透传上游结果与失败原因 |
-| `POST /mobile/sourcing/demands` | 请求体透传字段由 `targetMerchantId` 改为 `visibility`（0公开招标/1邀标）+ `invitedMerchantIds`；响应 `matchedMerchantCount` 更名 `notifiedMerchantCount` 原样随行（`PostWithResultAsync<object>` 无需改代码） |
-| `GET /mobile/sourcing/demands/{id}`、`/my/demands`、`/merchant/demands`、`/matched` | 透传 `isPrivate`（邀标单标记；`isTargeted` 已弃用）；`/matched` 增列"邀标给我的进行中单" |
+| `POST /mobile/sourcing/demands/{id}/publish-public` | **新增代理**：转为公开（邀请单进行中时由发布人放开为公开）；`PostWithResultAsync<object>` 原样透传上游结果与失败原因 |
+| `POST /mobile/sourcing/demands` | 请求体透传字段由 `targetMerchantId` 改为 `visibility`（0公开/1邀请）+ `invitedMerchantIds`；响应 `matchedMerchantCount` 更名 `notifiedMerchantCount` 原样随行（`PostWithResultAsync<object>` 无需改代码） |
+| `GET /mobile/sourcing/demands/{id}`、`/my/demands`、`/merchant/demands`、`/matched` | 透传 `isPrivate`（邀请单标记；`isTargeted` 已弃用）；`/matched` 增列"点名邀请我的进行中单" |
 
-> 口径：BFF 只做透传，不承载"谁能看邀标单"的判定——可见性由 API 侧统一裁决（邀标单非收件商家取详情返回 404）。
+> 口径：BFF 只做透传，不承载"谁能看邀请单"的判定——可见性由 API 侧统一裁决（邀请单非收件商家取详情返回 404）。
 > 配套文档：《搜索寻货与数据可信联动设计 v1.2.0》《API 端点说明 v1.54.0》《移动端登录与商户入驻设计 v1.7.38》。
 
 ---

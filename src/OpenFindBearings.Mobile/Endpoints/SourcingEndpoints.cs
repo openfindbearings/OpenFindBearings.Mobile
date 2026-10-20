@@ -89,7 +89,7 @@ public static class SourcingEndpoints
         .RequireAuthorization();
 
         /// <summary>
-        /// 转为公开招标（v1.8.0 公开招标/邀标）：邀标单进行中时由发布人放开为公开（进大厅），
+        /// 转为公开（v1.8.0 公开/邀请）：邀请单进行中时由发布人放开为公开（进大厅），
         /// 免去取消重建的额度损耗
         /// </summary>
         group.MapPost("/demands/{id}/publish-public", async (
@@ -105,7 +105,7 @@ public static class SourcingEndpoints
             return ProxyResult(result, "转为公开失败");
         })
         .WithName("PublishSourcingDemandPublic")
-        .WithSummary("转为公开招标")
+        .WithSummary("转为公开")
         .RequireAuthorization();
 
         /// <summary>
@@ -129,7 +129,7 @@ public static class SourcingEndpoints
         .RequireAuthorization();
 
         /// <summary>
-        /// 撤销应答（当前商户；仅待处理可撤；撤后需求回到未应答——招投标"开标前撤标"）
+        /// 撤销应答（当前商户；仅待处理可撤；撤后需求回到未应答，额度不回退）
         /// </summary>
         group.MapDelete("/demands/{id}/respond", async (
             string id,
@@ -338,8 +338,8 @@ public static class SourcingEndpoints
 
         /// <summary>
         /// 为你匹配的寻货（v1.6.0 搜索寻货联动）：透传 X-Merchant-Id 当前商户，
-        /// 返回"邀标给我的 + 匹配我在售型号的进行中寻货"，供商户工作台聚合 tab
-        /// 改动说明（v1.8.2）："定向给我的"旧措辞统一为"邀标给我的"（邀标单进收件商家的聚合面是硬承诺）
+        /// 返回"点名邀请我的 + 匹配我在售型号的进行中寻货"，供商户工作台聚合 tab
+        /// 改动说明（v1.8.2）："定向给我的"旧措辞统一为"点名邀请我的"（邀请单进收件商家的聚合面是硬承诺）
         /// </summary>
         group.MapGet("/matched", async (
             ApiClient api,
@@ -353,7 +353,7 @@ public static class SourcingEndpoints
         })
         .WithName("GetMatchedSourcingDemands")
         .WithSummary("为你匹配的寻货")
-        .WithDescription("邀标给我的 + 匹配我在售型号的进行中公开招标单（商家侧聚合面）")
+        .WithDescription("点名邀请我的 + 匹配我在售型号的进行中公开单（商家侧聚合面）")
         .RequireAuthorization();
 
         // ============ 撮合会话代理（v2.18.0 T1 会话） ============
@@ -573,9 +573,9 @@ public record SourcingDetailResponse(
     List<SourcingResponseDetail>? Responses,
     SourcingMyResponse? MyResponse,
     string? SelectedMerchantContact,
-    /// <summary>是否邀标单（v1.8.0；原 IsTargeted，前端出"邀标"徽章）</summary>
+    /// <summary>是否邀请单（v1.8.0；原 IsTargeted，前端出"邀请"徽章）</summary>
     bool IsPrivate = false,
-    /// <summary>邀标收件人家数（v1.8.0；前端出"邀标(N家)"文案）</summary>
+    /// <summary>邀请收件人家数（v1.8.0；前端出"邀请(N家)"文案）</summary>
     int InvitedCount = 0,
     // 改动说明（v2.12.0 商户名义发布）：发布方身份透传
     Guid? PublisherMerchantId = null,
@@ -637,9 +637,9 @@ public record UnreadCountResponse(int UnreadCount);
 /// <summary>发布请求（透传体；v2.12.0 加 MerchantId=商户名义发布；v1.8.0 以 Visibility+InvitedMerchantIds 取代 TargetMerchantId）</summary>
 public record SourcingPublishRequest(string PartNumber, Guid? BearingId, string? Brand, string? Quantity,
     string? ExpectedDelivery, string? Region, string? Description, bool UsePoints, Guid? MerchantId = null,
-    /// <summary>曝光范围：0=公开招标（默认，进大厅）/ 1=邀标（不进大厅，只推收件人）</summary>
+    /// <summary>曝光范围：0=公开（默认，进大厅）/ 1=邀请（不进大厅，只推收件人）</summary>
     int Visibility = 0,
-    /// <summary>邀标收件人勾选（空=全部匹配的认证在售商家；仅 Visibility=1 时有意义）</summary>
+    /// <summary>邀请收件人勾选（空=全部匹配的认证在售商家；仅 Visibility=1 时有意义）</summary>
     List<Guid>? InvitedMerchantIds = null);
 
 /// <summary>应答请求（v1.5.0 多行标书透传体：报价/库存/交期按行携带）</summary>
@@ -673,7 +673,7 @@ public record SourcingMyDemandItem(
     Guid? PublisherMerchantId = null,
     string? PublisherMerchantName = null,
     string? PublisherType = null,
-    // 改动说明（v1.8.0 公开招标/邀标）：曝光范围透传（"我的寻货"卡片出"邀标(N家)/转为公开招标"）
+    // 改动说明（v1.8.0 公开/邀请）：曝光范围透传（"我的寻货"卡片出"邀请(N家)/转为公开"）
     bool IsPrivate = false,
     int InvitedCount = 0);
 
@@ -693,7 +693,7 @@ public record SourcingMerchantDemandItem(
     string? PublisherName = null,
     /// <summary>当前用户是否经办人（前端出/藏管理按钮）</summary>
     bool IsMine = false,
-    // 改动说明（v1.8.0 公开招标/邀标）：曝光范围透传（本店寻货卡片出"邀标(N家)"）
+    // 改动说明（v1.8.0 公开/邀请）：曝光范围透传（本店寻货卡片出"邀请(N家)"）
     bool IsPrivate = false,
     int InvitedCount = 0);
 
@@ -737,5 +737,5 @@ public record MatchedSourcingItem(
     int ResponseCount,
     DateTime CreatedAt,
     DateTime ExpiryAt,
-    /// <summary>是否邀标给我的单（v1.8.0；原 IsTargeted，前端出"邀标"徽章）</summary>
+    /// <summary>是否点名邀请我的单（v1.8.0；原 IsTargeted，前端出"邀请"徽章）</summary>
     bool IsPrivate);
