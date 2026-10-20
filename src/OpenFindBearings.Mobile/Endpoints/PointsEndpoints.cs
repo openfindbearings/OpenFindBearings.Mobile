@@ -157,6 +157,22 @@ public static class PointsEndpoints
         .RequireAuthorization();
 
         /// <summary>
+        /// 商家牌级规则（v2.19.0 有效期制）：公开只读，规则页与未登录访客可用；
+        /// 阈值/有效期/保级天数全部由 API 从 SystemConfig 下发，前端不硬编码
+        /// </summary>
+        group.MapGet("/merchant-grade/rules", async (ApiClient api, CancellationToken ct) =>
+        {
+            var result = await api.GetAsync<MerchantGradeRulesResponse>("/api/points/merchant-grade/rules", ct);
+            return result == null
+                ? Results.Json(new { success = false, message = "等级规则获取失败，请稍后重试" }, statusCode: 502)
+                : Results.Ok(result);
+        })
+        .WithName("GetMerchantGradeRules")
+        .WithSummary("商家牌级规则")
+        .WithDescription("公开规则页数据源：有效期、保级天数、在售门槛、成交阈值与四档升档礼")
+        .AllowAnonymous();
+
+        /// <summary>
         /// 商家集体任务板（v2.6.0 M3）：周期任务进度与完成态（透传，散人为空清单）；
         /// 改动说明（v2.6.0 商家主页）：merchantId 可选透传——商家主页成员区按所属商家查询，
         /// 缺省仍走 API 最佳商户口径（任务中心卡）
@@ -262,20 +278,30 @@ public static class PointsEndpoints
     /// <summary>段位档（reached=已达档；bonusClaimed=该档升档礼终身已领）</summary>
     public record PointLadderItem(int Level, string Name, int MinTotalEarned, int LevelUpBonus, bool Reached, bool BonusClaimed);
 
-    /// <summary>商家卡级详情（透传 API /api/points/merchant-grade，v2.13.0 商家卡级页）</summary>
+    /// <summary>商家牌级详情（透传 API /api/points/merchant-grade，v2.13.0 商家等级页）</summary>
     /// 改动说明（v1.57.1 修 bug）：补 dealCount/windowDays/onSaleMin/silverDealMin/goldDealMin/nextTier，
     ///   并删除随金库退出定级而失效的 TreasuryEarned/Lv3OnSaleMin/Lv4OnSaleMin/Lv4TreasuryMin 死字段——
     ///   原契约缺字段致 Taro 卡级页把阈值渲染成 undefined
+    /// 改动说明（v1.8.8 有效期制）：windowDays 改为 periodDays，新增有效期起止、本期成交要求与到期降档预告
     public record MerchantGradeResponse(Guid MerchantId, string? MerchantName, int Grade, int Rank, string GradeDisplay,
-        bool IsVerified, int OnSaleCount, int DealCount, int WindowDays,
+        bool IsVerified, int OnSaleCount, int DealCount, int RequiredDeals, int PeriodDays, int GraceDays,
+        DateTime? PeriodStartAt, DateTime? PeriodEndAt,
         int OnSaleMin, int SilverDealMin, int GoldDealMin,
         int BonusLv2, int BonusLv3, int BonusLv4, List<int> ClaimedRanks,
-        MerchantGradeNextTier? NextTier,
+        MerchantGradeNextTier? NextTier, int? DowngradeTo,
         DateTime? GraceUntil, List<string> Labels);
 
-    /// <summary>卡级"距下一档"（API nextTier；金卡为 null）</summary>
+    /// <summary>卡级"距下一档"（API nextTier；金牌为 null）</summary>
     public record MerchantGradeNextTier(int Grade, string Label, int RequiredOnSale, int RequiredDeals,
         bool MetOnSale, bool MetDeals);
+
+    /// <summary>商家牌级规则（透传 API /api/points/merchant-grade/rules，v2.19.0 规则页；匿名可读）</summary>
+    public record MerchantGradeRulesResponse(int PeriodDays, int GraceDays, int OnSaleMin,
+        int SilverDealMin, int GoldDealMin, List<MerchantGradeRuleTier> Tiers);
+
+    /// <summary>规则阶梯行（rank 1 普通 / 2 铜牌 / 3 银牌 / 4 金牌）</summary>
+    public record MerchantGradeRuleTier(int Rank, string Name, int RequiredOnSale, int RequiredDeals,
+        int UpBonus, string Note);
 
     /// <summary>商家福利卡（透传 API /api/points/merchant-buff，v2.5.0）</summary>
     // v2.12.0 等级玩法：透传下一档升档礼金额（gradeUpBonus，商家金终身一次）与本店保级截止钟

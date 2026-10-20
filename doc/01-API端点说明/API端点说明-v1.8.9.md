@@ -1,4 +1,4 @@
-﻿# Mobile BFF API 端点说明 v1.8.7
+﻿# Mobile BFF API 端点说明 v1.8.9
 
 ## 概述
 
@@ -12,6 +12,8 @@ OpenFindBearings.Mobile 作为移动端 BFF，所有端点统一挂载在 `/mobi
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| v1.8.9 | 2026-10-20 | 随 API 02 v1.58.1（有效期制审计修复，**BFF 无新增路由**）：`GET /mobile/points/merchant-grade` 的 `MerchantGradeResponse` 补下发 `GraceDays`（在售不足保级天数，供等级页文案不硬编码）；其余（回执 `CountedAt`、退款口径、扣分幂等键、普通档无加成、牌级到期提醒）均为 API 内部行为，BFF 原样透传。 |
+| v1.8.8 | 2026-10-20 | 随 API 02 v1.58.0（商家牌级 180 天有效期制，**无破坏性变更**）：① `GET /mobile/points/merchant-grade` 的 `windowDays` 改 `periodDays`，新增 `requiredDeals`/`periodStartAt`/`periodEndAt`/`downgradeTo`（BFF DTO 同步新形状）；② 新增匿名代理 `GET /mobile/points/merchant-grade/rules`（一期天数、保级天数、在售与成交阈值、四档说明）；③ 商家列表/详情继续只下发 `grade`/`gradeDisplay`，有效期字段由 Admin 直连 API 使用、不经 BFF。详见文末"本版增量" |
 | v1.8.7 | 2026-10-20 | 随 API 02 v1.57.2（**术语统一，BFF 无路由/字段变更**）：文档与代码注释中「公开招标 / 邀标」改为「公开 / 邀请」，`/mobile/sourcing/*` 代理路径、请求体 `visibility`/`invitedMerchantIds` 与响应字段均不变 |
 | v1.8.6 | 2026-10-20 | 随 API 02 v1.57.1（寻货收口修复，**BFF 无新增路由**）：① `GET /mobile/bearings/{id}/merchants` 透传商家卡级 `grade`/`gradeDisplay`（与「已认证」徽章并列，认证是类型、卡级是等级）；② `GET /mobile/sourcing/demands/{id}` 的 `myFeedback` 增 `note`（未计分原因）；③ 应答摘要透传 `merchantGrade`/`merchantGradeDisplay`；④ 会话只读口径与未读聚合计数随上游调整，BFF 原样透传。详见文末"本版增量" |
 | v1.8.5 | 2026-10-19 | 随 API 02 v1.57.0（商家卡级 + 成交回执 + T1 会话 + 电话单向）：寻货组新增 5 个代理——`POST /mobile/sourcing/responses/{id}/feedback`（成交回执）、`GET /mobile/sourcing/conversations`（会话列表，含双侧视角与未读）、`GET /mobile/sourcing/conversations/unread-count`、`GET|POST /mobile/sourcing/conversations/{demandId}/{merchantId}/messages`（分页拉取 / 发送）、`POST /mobile/sourcing/conversations/{demandId}/{merchantId}/read`（标记已读）。契约变化：`GET /mobile/sourcing/demands/{id}` 不再下发 `publisherContact`（电话单向，商家侧永不返回需求方号码），改下发 `contactUnlockedAt`/`selectedResponseId`/`canFeedback`/`myFeedback`；`GET /mobile/sourcing/opportunities` 商家可见商机不含需求方号码；`GET /mobile/points/merchant-grade` 透传 `dealCount`/`windowDays`/`onSaleMin`/`silverDealMin`/`goldDealMin`/`nextTier`。详见文末"本版增量" |
@@ -714,3 +716,16 @@ BFF 调用 API 时统一附带请求头 `X-Internal-Token`（值取自配置 `In
 
 > 说明：幂等键由前端生成（Taro `genPublishIdempotencyKey`，页面会话内稳定复用、发布成功后轮换），BFF 只透传不生成；同一 key 的重放由上游返回原单（不重复建单/扣分）。
 > 配套文档：《API 端点说明 v1.56.0》《寻货功能设计 v1.8.2》《移动端登录与商户入驻设计 v1.7.40》。
+
+---
+
+## 本版增量（v1.8.8）：商家牌级有效期制（+1 端点）
+
+| 端点 | 变更 |
+|---|---|
+| `GET /mobile/points/merchant-grade?merchantId=` | DTO 改新形状：删除 `windowDays`，改 `periodDays`（一期天数）；新增 `requiredDeals`（保住当前牌级所需本期成交）、`periodStartAt`/`periodEndAt`（本期起止）、`downgradeTo`（到期将降到的档位）。`dealCount` 语义改为本期成功撮合，`onSaleCount` 仍实时 |
+| `GET /mobile/points/merchant-grade/rules` | **新增匿名代理**：透传 API 同名端点，返回 `periodDays`/`graceDays`/`onSaleMin`/`silverDealMin`/`goldDealMin` 与四档 `tiers[]`，供 Taro 等级规则页实时渲染 |
+| 商家列表 / 详情 | 无变化：BFF 只下发 `grade`/`gradeDisplay`；有效期与保级字段由 Admin 直连 API 获取，不经 BFF |
+
+> 有效期口径：一期 180 天，升级/续期重发一期；到期按本期成交续期或降档，零成交降至铜牌；在售连续不足超过 15 天直接降普通。
+> 配套文档：《等级玩法设计 v1.3.0》《API 端点说明 v1.58.0》《Admin 功能需求与后端服务映射 v1.48.0》《移动端登录与商户入驻设计 v1.7.45》。
