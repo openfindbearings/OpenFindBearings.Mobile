@@ -284,7 +284,7 @@ public static class PointsEndpoints
     ///   原契约缺字段致 Taro 卡级页把阈值渲染成 undefined
     /// 改动说明（v1.8.8 有效期制）：windowDays 改为 periodDays，新增有效期起止、本期成交要求与到期降档预告
     public record MerchantGradeResponse(Guid MerchantId, string? MerchantName, int Grade, int Rank, string GradeDisplay,
-        bool IsVerified, int OnSaleCount, int DealCount, int RequiredDeals, int PeriodDays,
+        bool IsVerified, int OnSaleCount, int DealCount, int RequiredDeals, int PeriodDays, int GraceDays,
         DateTime? PeriodStartAt, DateTime? PeriodEndAt,
         int OnSaleMin, int SilverDealMin, int GoldDealMin,
         int BonusLv2, int BonusLv3, int BonusLv4, List<int> ClaimedRanks,
