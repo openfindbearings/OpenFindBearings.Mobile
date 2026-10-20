@@ -126,9 +126,12 @@ public static class BearingEndpoints
     // v2.3.0 商城置顶卡：透传置顶态（买家侧角标 + 排序已由 API 完成）
     // v2.15.0 状态统一：IsOnSale/IsRestocking → SaleState(0=已下架/1=出售中/2=补货中)
     // v1.6.0 数据可信联动：IsVerified=询价行动门判定（仅认证商家可发起询价）
+    // 改动说明（v1.57.1 双徽章并列）：补商家卡级（Grade/GradeDisplay）——与"已认证"徽章并列展示，
+    //   认证是类型、卡级是等级，前端不得用认证代替卡级也不得覆盖
     public record BearingMerchantItem(
         Guid MerchantId, string MerchantName, string? Price, int SaleState, string? RestockEta,
-        bool IsPinned = false, DateTime? PinnedUntil = null, bool IsVerified = false);
+        bool IsPinned = false, DateTime? PinnedUntil = null, bool IsVerified = false,
+        int Grade = 0, string? GradeDisplay = null);
 
     // v2.16.0 替代品治理：透传三级替代类型与责任提示字段（BearingId=替代品对方轴承，供导航）
     public record InterchangeItem(

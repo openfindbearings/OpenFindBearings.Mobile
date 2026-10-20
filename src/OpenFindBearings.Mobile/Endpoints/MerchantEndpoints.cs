@@ -730,7 +730,8 @@ public static class MerchantEndpoints
         string? ContactPerson, string? Address,
         bool IsVerified, string? Status, string? Grade,
         int FollowerCount, int ProductCount, string? LogoUrl,
-        // v2.5.0 商家经济：等级中文展示名透传（入驻/认证/口碑/金牌，v2.13.0 Lv3 改名口碑商家），置于尾部带缺省防位置错位
+        // v2.5.0 商家经济：等级中文展示名透传（卡级口径：注册商户/铜卡/银卡/金卡），置于尾部带缺省防位置错位
+        // 改动说明（v1.57.1 注释清理）：等级已改卡级制，认证不再是等级档位（由 IsVerified 独立表达）
         string? GradeDisplay = null,
         // v2.6.0 商家主页：成员标记（"进入管理"横幅）与集体任务累计达成数（勋章园卡通关史）
         bool IsMerchantMember = false, int CompletedTaskCount = 0,
