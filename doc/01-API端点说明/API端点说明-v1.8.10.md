@@ -1,4 +1,4 @@
-﻿# Mobile BFF API 端点说明 v1.8.9
+﻿# Mobile BFF API 端点说明 v1.8.10
 
 ## 概述
 
@@ -12,6 +12,7 @@ OpenFindBearings.Mobile 作为移动端 BFF，所有端点统一挂载在 `/mobi
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| v1.8.10 | 2026-10-22 | `GET /mobile/mall/feed` 失败不再兜底成 200 空列表：上游 4xx/5xx 经 `BffProxy.Result` 透传状态码与 `message`，上游成功但响应体解析不出分页数据时返回 502「商城货源响应解析失败」。此前该端点把任何上游故障吞成空列表，前端只能显示「暂无货源」，掩盖真实错误（测试服商城全空即由此暴露为数据问题）。**响应成功结构不变** |
 | v1.8.9 | 2026-10-20 | 随 API 02 v1.58.1（有效期制审计修复，**BFF 无新增路由**）：`GET /mobile/points/merchant-grade` 的 `MerchantGradeResponse` 补下发 `GraceDays`（在售不足保级天数，供等级页文案不硬编码）；其余（回执 `CountedAt`、退款口径、扣分幂等键、普通档无加成、牌级到期提醒）均为 API 内部行为，BFF 原样透传。 |
 | v1.8.8 | 2026-10-20 | 随 API 02 v1.58.0（商家牌级 180 天有效期制，**无破坏性变更**）：① `GET /mobile/points/merchant-grade` 的 `windowDays` 改 `periodDays`，新增 `requiredDeals`/`periodStartAt`/`periodEndAt`/`downgradeTo`（BFF DTO 同步新形状）；② 新增匿名代理 `GET /mobile/points/merchant-grade/rules`（一期天数、保级天数、在售与成交阈值、四档说明）；③ 商家列表/详情继续只下发 `grade`/`gradeDisplay`，有效期字段由 Admin 直连 API 使用、不经 BFF。详见文末"本版增量" |
 | v1.8.7 | 2026-10-20 | 随 API 02 v1.57.2（**术语统一，BFF 无路由/字段变更**）：文档与代码注释中「公开招标 / 邀标」改为「公开 / 邀请」，`/mobile/sourcing/*` 代理路径、请求体 `visibility`/`invitedMerchantIds` 与响应字段均不变 |
@@ -623,7 +624,7 @@ BFF 调用 API 时统一附带请求头 `X-Internal-Token`（值取自配置 `In
 ### 变更端点 / 字段
 | 端点 | 变更 |
 |---|---|
-| GET /mobile/mall/feed | 货源导购卡片契约，含 `saleState` |
+| GET /mobile/mall/feed | 货源导购卡片契约，含 `saleState`；v1.8.10 起上游失败不再返回空列表，改为透传状态码与 `message`（解析不出分页数据时 502「商城货源响应解析失败」） |
 | GET /mobile/merchant/bearings | `MyMerchantBearingItem` 由 `isOnSale`/`isRestocking`/`isPendingApproval` 收敛为 `saleState` + `reviewStatus`；上架语义改为未通过→提交审核、已通过→出售中 |
 | GET /mobile/bearings/{id}/interchanges | 只返回已生效替代；DTO 增 `interchangeType`/`typeLabel`/`isBidirectional`/`remarks` 等 |
 

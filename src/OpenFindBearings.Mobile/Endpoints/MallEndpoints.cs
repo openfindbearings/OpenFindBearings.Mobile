@@ -165,8 +165,14 @@ public static class MallEndpoints
         {
             var token = GetToken(http);
             var path = BuildFeedQueryString(q);
-            var result = await api.GetPagedAsync<MallFeedItem>(path, token, ct);
-            return Results.Ok(result ?? new ApiClient.PagedResult<MallFeedItem>([], 0, 1, 20));
+            // 改动说明：原实现把上游失败（404/500/反序列化异常）兜底成 200 空列表，前端只看到「暂无货源」，
+            // 真实故障被掩盖（测试服商城全空即由此而来）。改为走带结果的调用，失败时透传上游状态码与原因。
+            var call = await api.GetWithResultAsync<ApiClient.PagedResult<MallFeedItem>>(path, token, ct);
+            if (!call.Success)
+                return BffProxy.Result(call, "商城货源加载失败，请稍后重试");
+            return call.Data == null
+                ? Results.Json(new { success = false, message = "商城货源响应解析失败" }, statusCode: 502)
+                : Results.Ok(call.Data);
         })
         .WithName("GetMallFeed")
         .WithSummary("商城货源流")
