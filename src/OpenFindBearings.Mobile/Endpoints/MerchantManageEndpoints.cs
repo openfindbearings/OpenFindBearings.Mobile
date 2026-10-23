@@ -18,8 +18,9 @@ public static class MerchantManageEndpoints
         /// 获取自家在售商品列表
         /// </summary>
         group.MapGet("/bearings", async (
-            int page,
-            int pageSize,
+            // 改动说明：分页改可空——非空值类型会被最小 API 判为必填查询参数，缺省即 400 空体
+            int? page,
+            int? pageSize,
             bool? onlyOnSale,
             bool? pendingOnly,
             int? reviewStatus,
@@ -30,7 +31,8 @@ public static class MerchantManageEndpoints
             var token = GetToken(http);
             if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
 
-            var path = $"/api/merchant/bearings?page={page}&pageSize={pageSize}";
+            // 改动说明：缺省分页按第 1 页、20 条兜底
+            var path = $"/api/merchant/bearings?page={page ?? 1}&pageSize={pageSize ?? 20}";
             if (onlyOnSale.HasValue) path += $"&onlyOnSale={onlyOnSale.Value.ToString().ToLower()}";
             if (pendingOnly.HasValue) path += $"&pendingOnly={pendingOnly.Value.ToString().ToLower()}";
             // v2.15.0 状态统一：审核位精确过滤（0=仓库中/1=审核中/2=已通过/3=已驳回）
@@ -353,11 +355,12 @@ public static class MerchantManageEndpoints
         .RequireAuthorization();
 
         /// <summary>金库流水分页</summary>
-        group.MapGet("/treasury/transactions", async (int page, int pageSize, ApiClient api, HttpContext http, CancellationToken ct) =>
+        group.MapGet("/treasury/transactions", async (int? page, int? pageSize, ApiClient api, HttpContext http, CancellationToken ct) =>
         {
             var token = GetToken(http);
             if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
-            var result = await api.GetPagedAsync<TreasuryTxItem>($"/api/merchant/treasury/transactions?page={page}&pageSize={pageSize}", token, ct);
+            // 改动说明：分页改可空，缺省按第 1 页、20 条兜底（非空时缺参会被判必填而 400）
+            var result = await api.GetPagedAsync<TreasuryTxItem>($"/api/merchant/treasury/transactions?page={page ?? 1}&pageSize={pageSize ?? 20}", token, ct);
             return Results.Ok(result ?? new ApiClient.PagedResult<TreasuryTxItem>([], 0, 1, 20));
         })
         .WithName("GetMerchantTreasuryTransactionsProxy")
@@ -434,11 +437,12 @@ public static class MerchantManageEndpoints
         .RequireAuthorization();
 
         /// <summary>礼品订单列表（可按发货状态过滤；含收货信息供发货）</summary>
-        group.MapGet("/gift-orders", async (int? shipStatus, int page, int pageSize, ApiClient api, HttpContext http, CancellationToken ct) =>
+        group.MapGet("/gift-orders", async (int? shipStatus, int? page, int? pageSize, ApiClient api, HttpContext http, CancellationToken ct) =>
         {
             var token = GetToken(http);
             if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
-            var path = $"/api/merchant/gift-orders?page={page}&pageSize={pageSize}";
+            // 改动说明：分页改可空，缺省按第 1 页、20 条兜底（非空时缺参会被判必填而 400）
+            var path = $"/api/merchant/gift-orders?page={page ?? 1}&pageSize={pageSize ?? 20}";
             if (shipStatus.HasValue) path += $"&shipStatus={shipStatus.Value}";
             var result = await api.GetPagedAsync<GiftOrderItem>(path, token, ct);
             return Results.Ok(result ?? new ApiClient.PagedResult<GiftOrderItem>([], 0, 1, 20));

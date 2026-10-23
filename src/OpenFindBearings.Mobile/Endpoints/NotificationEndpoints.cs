@@ -19,8 +19,9 @@ public static class NotificationEndpoints
         /// </summary>
         group.MapGet("/", async (
             bool? unreadOnly,
-            int page,
-            int pageSize,
+            // 改动说明：分页改可空——非空值类型会被最小 API 判为必填查询参数，缺省即 400 空体
+            int? page,
+            int? pageSize,
             ApiClient api,
             HttpContext http,
             CancellationToken ct) =>
@@ -28,7 +29,8 @@ public static class NotificationEndpoints
             var token = GetToken(http);
             if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
 
-            var path = $"/api/notifications?page={page}&pageSize={pageSize}";
+            // 改动说明：缺省分页按第 1 页、20 条兜底
+            var path = $"/api/notifications?page={page ?? 1}&pageSize={pageSize ?? 20}";
             if (unreadOnly == true) path += "&unreadOnly=true";
 
             var result = await api.GetPagedAsync<NotificationItem>(path, token, ct);
