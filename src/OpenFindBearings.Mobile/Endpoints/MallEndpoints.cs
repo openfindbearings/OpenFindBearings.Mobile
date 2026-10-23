@@ -58,8 +58,9 @@ public class MallFeedQuery
     public decimal? MaxWidth { get; set; }
     public string? SortBy { get; set; }
     public string? SortOrder { get; set; }
-    public int Page { get; set; } = 1;
-    public int PageSize { get; set; } = 20;
+    // 改动说明：分页字段改可空——[AsParameters] 把非空值类型当作必填，缺省即 400 空体
+    public int? Page { get; set; }
+    public int? PageSize { get; set; }
 }
 
 /// <summary>
@@ -195,8 +196,8 @@ public static class MallEndpoints
         if (q.MaxWidth.HasValue) parts.Add($"maxWidth={q.MaxWidth.Value}");
         if (!string.IsNullOrWhiteSpace(q.SortBy)) parts.Add($"sortBy={Uri.EscapeDataString(q.SortBy)}");
         if (!string.IsNullOrWhiteSpace(q.SortOrder)) parts.Add($"sortOrder={Uri.EscapeDataString(q.SortOrder)}");
-        parts.Add($"page={q.Page}");
-        parts.Add($"pageSize={q.PageSize}");
+        parts.Add($"page={q.Page ?? 1}");
+        parts.Add($"pageSize={q.PageSize ?? 20}");
         return "/api/mall/feed?" + string.Join("&", parts);
     }
 

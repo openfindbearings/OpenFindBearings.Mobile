@@ -57,7 +57,8 @@ public static class MerchantEndpoints
             [AsParameters] BearingQuery query,
             CancellationToken ct) =>
         {
-            var path = $"/api/merchants/{id}/bearings?page={query.Page}&pageSize={query.PageSize}";
+            // 改动说明：分页参数改为可空，缺省时按第 1 页、20 条兜底
+            var path = $"/api/merchants/{id}/bearings?page={query.Page ?? 1}&pageSize={query.PageSize ?? 20}";
             var result = await api.GetPagedAsync<MerchantBearingItem>(path, ct);
             return Results.Ok(result ?? new ApiClient.PagedResult<MerchantBearingItem>([], 0, 1, 20));
         })
@@ -282,8 +283,9 @@ public static class MerchantEndpoints
         /// </summary>
         group.MapGet("/claimable", async (
             string? keyword,
-            int page,
-            int pageSize,
+            // 改动说明：分页改可空——非空值类型会被最小 API 判为必填查询参数，缺省即 400 空体
+            int? page,
+            int? pageSize,
             ApiClient api,
             HttpContext http,
             CancellationToken ct) =>
@@ -292,7 +294,8 @@ public static class MerchantEndpoints
             if (string.IsNullOrEmpty(token))
                 return Results.Unauthorized();
 
-            var path = $"/api/merchant/claimable?page={page}&pageSize={pageSize}";
+            // 改动说明：缺省分页按第 1 页、20 条兜底
+            var path = $"/api/merchant/claimable?page={page ?? 1}&pageSize={pageSize ?? 20}";
             if (!string.IsNullOrWhiteSpace(keyword))
                 path += $"&keyword={Uri.EscapeDataString(keyword)}";
 
@@ -613,14 +616,16 @@ public static class MerchantEndpoints
         // 改动说明：新增排序透传（name/productcount），与 API 商家搜索对齐
         public string? SortBy { get; set; }
         public string? SortOrder { get; set; }
-        public int Page { get; set; } = 1;
-        public int PageSize { get; set; } = 20;
+        // 改动说明：分页字段改可空——[AsParameters] 把非空值类型当作必填，缺省即 400 空体
+        public int? Page { get; set; }
+        public int? PageSize { get; set; }
     }
 
     public class BearingQuery
     {
-        public int Page { get; set; } = 1;
-        public int PageSize { get; set; } = 20;
+        // 改动说明：同上，缺省分页由调用处兜底 1/20
+        public int? Page { get; set; }
+        public int? PageSize { get; set; }
     }
 
     /// <summary>
@@ -823,8 +828,8 @@ public static class MerchantEndpoints
         if (p.VerifiedOnly.HasValue) parts.Add($"verifiedOnly={p.VerifiedOnly.Value.ToString().ToLower()}");
         if (!string.IsNullOrEmpty(p.SortBy)) parts.Add($"sortBy={Uri.EscapeDataString(p.SortBy)}");
         if (!string.IsNullOrEmpty(p.SortOrder)) parts.Add($"sortOrder={Uri.EscapeDataString(p.SortOrder)}");
-        parts.Add($"page={p.Page}");
-        parts.Add($"pageSize={p.PageSize}");
+        parts.Add($"page={p.Page ?? 1}");
+        parts.Add($"pageSize={p.PageSize ?? 20}");
         return path + "?" + string.Join("&", parts);
     }
 }

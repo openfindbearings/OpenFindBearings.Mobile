@@ -51,7 +51,8 @@ public static class BearingEndpoints
             [AsParameters] MerchantQuery query,
             CancellationToken ct) =>
         {
-            var path = $"/api/bearings/{id}/merchants?onlyOnSale=true&page={query.Page}&pageSize={query.PageSize}";
+            // 改动说明：分页参数改为可空，缺省时按第 1 页、20 条兜底（与 DTO 原默认值一致）
+            var path = $"/api/bearings/{id}/merchants?onlyOnSale=true&page={query.Page ?? 1}&pageSize={query.PageSize ?? 20}";
             var result = await api.GetPagedAsync<BearingMerchantItem>(path, ct);
             return Results.Ok(result ?? new ApiClient.PagedResult<BearingMerchantItem>([], 0, 1, 20));
         })
@@ -93,14 +94,17 @@ public static class BearingEndpoints
         public decimal? MaxOuterDiameter { get; set; }
         public decimal? MinWidth { get; set; }
         public decimal? MaxWidth { get; set; }
-        public int Page { get; set; } = 1;
-        public int PageSize { get; set; } = 20;
+        // 改动说明：分页字段改可空——[AsParameters] 把非空值类型当作必填，调用方不带分页时
+        //   会直接返回 400 空体；可空后由 BuildQueryString 兜底 1/20 页默认值
+        public int? Page { get; set; }
+        public int? PageSize { get; set; }
     }
 
     public class MerchantQuery
     {
-        public int Page { get; set; } = 1;
-        public int PageSize { get; set; } = 20;
+        // 改动说明：同上，缺省分页不再触发 400
+        public int? Page { get; set; }
+        public int? PageSize { get; set; }
     }
 
     // ============ DTO ============
@@ -159,8 +163,8 @@ public static class BearingEndpoints
         if (p.MaxOuterDiameter.HasValue) parts.Add($"maxOuterDiameter={p.MaxOuterDiameter.Value}");
         if (p.MinWidth.HasValue) parts.Add($"minWidth={p.MinWidth.Value}");
         if (p.MaxWidth.HasValue) parts.Add($"maxWidth={p.MaxWidth.Value}");
-        parts.Add($"page={p.Page}");
-        parts.Add($"pageSize={p.PageSize}");
+        parts.Add($"page={p.Page ?? 1}");
+        parts.Add($"pageSize={p.PageSize ?? 20}");
         return path + "?" + string.Join("&", parts);
     }
 }

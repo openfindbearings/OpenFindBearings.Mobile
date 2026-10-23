@@ -19,23 +19,30 @@ public static class SourcingEndpoints
         /// </summary>
         group.MapGet("/demands", async (
             string? keyword,
-            bool onlyOpen,
+            // 改动说明：onlyOpen 与分页改可空——非空值类型会被最小 API 判为必填查询参数，
+            //   缺省直接 400 空体；onlyOpen 缺省按 true（只列开放中的寻货）兜底
+            bool? onlyOpen,
             string? brand,
             string? region,
             string? sort,
-            int page,
-            int pageSize,
+            int? page,
+            int? pageSize,
             ApiClient api,
             HttpContext http,
             CancellationToken ct) =>
         {
             var token = GetToken(http);
-            // 改动说明（v1.12.0 信息架构收敛）：删 mineOnly 透传（发现页回归纯大厅，
-            // "我的寻货"走 /my/demands 独立端点），同批新增 brand/region/sort 筛选透传
-            var qs = $"?keyword={Uri.EscapeDataString(keyword ?? "")}&onlyOpen={onlyOpen}" +
+            // 改动说明：可空分页先落本地变量再校正，缺省按第 1 页、20 条，上限 50 条
+            var p = page ?? 1;
+            if (p <= 0) p = 1;
+            var ps = pageSize ?? 20;
+            if (ps <= 0 || ps > 50) ps = 20;
+            // 改动说明：v1.12.0 消息架构调整后删除 mineOnly 透传，列表页回纯公开流；
+            //   这里是"我的寻货"（/my/demands）独立端点，保留 brand/region/sort 筛选透传
+            var qs = $"?keyword={Uri.EscapeDataString(keyword ?? "")}&onlyOpen={onlyOpen ?? true}" +
                 $"&brand={Uri.EscapeDataString(brand ?? "")}&region={Uri.EscapeDataString(region ?? "")}" +
                 $"&sort={Uri.EscapeDataString(sort ?? "desc")}" +
-                $"&page={(page <= 0 ? 1 : page)}&pageSize={(pageSize is > 0 and <= 50 ? pageSize : 20)}";
+                $"&page={p}&pageSize={ps}";
             var result = await api.GetAsync<SourcingFeedResponse>($"/api/sourcing/demands{qs}", token, ct);
             return Results.Ok(result ?? new SourcingFeedResponse(Array.Empty<SourcingFeedItem>(), 0));
         })
@@ -362,8 +369,9 @@ public static class SourcingEndpoints
         /// 会话列表（需求方与商家方两视角合并，含未读数与单据状态）
         /// </summary>
         group.MapGet("/conversations", async (
-            int page,
-            int pageSize,
+            // 改动说明：分页改可空，避免缺省参数被当作必填而返回 400 空体
+            int? page,
+            int? pageSize,
             ApiClient api,
             HttpContext http,
             CancellationToken ct) =>
@@ -371,7 +379,12 @@ public static class SourcingEndpoints
             var token = GetToken(http);
             if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
 
-            var qs = $"?page={(page <= 0 ? 1 : page)}&pageSize={(pageSize is > 0 and <= 50 ? pageSize : 20)}";
+            // 改动说明：可空分页统一兜底第 1 页、20 条，上限 50 条
+            var p = page ?? 1;
+            if (p <= 0) p = 1;
+            var ps = pageSize ?? 20;
+            if (ps <= 0 || ps > 50) ps = 20;
+            var qs = $"?page={p}&pageSize={ps}";
             var result = await api.GetAsync<SourcingConversationListResponse>($"/api/sourcing/conversations{qs}", token, ct);
             return Results.Ok(result ?? new SourcingConversationListResponse(new List<SourcingConversationItem>(), 0));
         })
@@ -404,7 +417,8 @@ public static class SourcingEndpoints
             string demandId,
             string merchantId,
             string? before,
-            int limit,
+            // 改动说明：limit 改可空——非空 int 会被最小 API 判为必填查询参数，缺省即 400 空体
+            int? limit,
             ApiClient api,
             HttpContext http,
             CancellationToken ct) =>
@@ -412,7 +426,8 @@ public static class SourcingEndpoints
             var token = GetToken(http);
             if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
 
-            var qs = $"?limit={(limit is > 0 and <= 50 ? limit : 30)}";
+            // 改动说明：缺省条数按 30 兜底，上限 50
+            var qs = $"?limit={((limit ?? 30) is > 0 and <= 50 ? limit ?? 30 : 30)}";
             if (!string.IsNullOrWhiteSpace(before))
                 qs += $"&before={Uri.EscapeDataString(before)}";
             var result = await api.GetAsync<SourcingMessagesResponse>(

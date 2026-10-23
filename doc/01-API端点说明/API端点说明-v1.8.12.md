@@ -1,4 +1,4 @@
-﻿# Mobile BFF API 端点说明 v1.8.10
+# Mobile BFF API 端点说明 v1.8.12
 
 ## 概述
 
@@ -12,6 +12,8 @@ OpenFindBearings.Mobile 作为移动端 BFF，所有端点统一挂载在 `/mobi
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| v1.8.12 | 2026-10-23 | 同类必填陷阱一次扫净：把仍是裸必填参数的端点全部改为可空并兜底默认值。`/mobile/sourcing/demands`（`onlyOpen`、`page`、`pageSize`，`onlyOpen` 缺省按 true）、`/mobile/sourcing/conversations`、`/mobile/sourcing/conversations/{demandId}/{merchantId}/messages`（`limit` 缺省 30、上限 50）、`/mobile/notifications`、`/mobile/points/transactions`、`/mobile/merchants/claimable`、`/mobile/merchant/bearings`、`/mobile/merchant/treasury/transactions`、`/mobile/merchant/gift-orders`，以及 `MallEndpoints.MallFeedQuery` 的 `Page`/`PageSize`。至此 BFF 全部列表端点不带分页参数也能取到第 1 页 20 条（详见文末"本版增量"） |
+| v1.8.11 | 2026-10-23 | 分页参数不再被当作必填（**契约不变，仅缺省值生效**）：`[AsParameters]` 会把非空值类型属性判为必填查询参数，此前调用方不带 `page`/`pageSize` 时端点直接返回 400 空体。`BearingEndpoints.SearchParams`/`MerchantQuery`、`MerchantEndpoints.SearchParams`/`BearingQuery`、`ProfileEndpoints.PageQuery` 的分页字段统一改为可空，并在拼上游路径时兜底第 1 页、20 条。涉及 `/mobile/bearings/search`、`/mobile/bearings/{id}/merchants`、`/mobile/merchants/search`、`/mobile/merchants/{id}/bearings`、`/mobile/me/favorites/bearings`、`/mobile/me/follows/merchants`、`/mobile/me/history/*`、`/mobile/me/corrections` 与 `/mobile/mall/feed`（详见文末"本版增量"） |
 | v1.8.10 | 2026-10-22 | `GET /mobile/mall/feed` 失败不再兜底成 200 空列表：上游 4xx/5xx 经 `BffProxy.Result` 透传状态码与 `message`，上游成功但响应体解析不出分页数据时返回 502「商城货源响应解析失败」。此前该端点把任何上游故障吞成空列表，前端只能显示「暂无货源」，掩盖真实错误（测试服商城全空即由此暴露为数据问题）。**响应成功结构不变** |
 | v1.8.9 | 2026-10-20 | 随 API 02 v1.58.1（有效期制审计修复，**BFF 无新增路由**）：`GET /mobile/points/merchant-grade` 的 `MerchantGradeResponse` 补下发 `GraceDays`（在售不足保级天数，供等级页文案不硬编码）；其余（回执 `CountedAt`、退款口径、扣分幂等键、普通档无加成、牌级到期提醒）均为 API 内部行为，BFF 原样透传。 |
 | v1.8.8 | 2026-10-20 | 随 API 02 v1.58.0（商家牌级 180 天有效期制，**无破坏性变更**）：① `GET /mobile/points/merchant-grade` 的 `windowDays` 改 `periodDays`，新增 `requiredDeals`/`periodStartAt`/`periodEndAt`/`downgradeTo`（BFF DTO 同步新形状）；② 新增匿名代理 `GET /mobile/points/merchant-grade/rules`（一期天数、保级天数、在售与成交阈值、四档说明）；③ 商家列表/详情继续只下发 `grade`/`gradeDisplay`，有效期字段由 Admin 直连 API 使用、不经 BFF。详见文末"本版增量" |
@@ -719,6 +721,37 @@ BFF 调用 API 时统一附带请求头 `X-Internal-Token`（值取自配置 `In
 > 配套文档：《API 端点说明 v1.56.0》《寻货功能设计 v1.8.2》《移动端登录与商户入驻设计 v1.7.40》。
 
 ---
+
+## 本版增量（v1.8.12）：裸必填参数全量收敛（契约不变）
+
+| 端点 | 改动 |
+|---|---|
+| `/mobile/sourcing/demands` | `onlyOpen` 改 `bool?` 缺省 true；`page`/`pageSize` 改 `int?`，缺省 1/20、上限 50 |
+| `/mobile/sourcing/conversations` | `page`/`pageSize` 改 `int?`，缺省 1/20、上限 50 |
+| `/mobile/sourcing/conversations/{demandId}/{merchantId}/messages` | `limit` 改 `int?`，缺省 30、上限 50 |
+| `/mobile/notifications` | `page`/`pageSize` 改 `int?`，缺省 1/20 |
+| `/mobile/points/transactions` | 同上 |
+| `/mobile/merchants/claimable` | 同上 |
+| `/mobile/merchant/bearings` | 同上 |
+| `/mobile/merchant/treasury/transactions` | 同上 |
+| `/mobile/merchant/gift-orders` | 同上 |
+| `/mobile/mall/feed` | `MallFeedQuery.Page`/`PageSize` 改 `int?`，拼上游路径时兜底 1/20 |
+
+> 同一陷阱的 API 侧同批修复：`/api/bearings/search`、`/api/merchants/search`、`/api/mall/feed` 的 `Page`/`PageSize` 一并改可空（见 API《商城导购设计 v1.0.2》）。
+> 行为不变：Taro 均显式带参，线上响应不受影响；变的是缺省参数不再返回 400 空体。
+
+## 本版增量（v1.8.11）：分页参数缺省不再 400（契约不变）
+
+| 位置 | 变更 |
+|---|---|
+| `BearingEndpoints.SearchParams` / `MerchantQuery` | `Page`/`PageSize` 由 `int` 改 `int?`，拼上游路径时 `?? 1` / `?? 20` 兜底 |
+| `MerchantEndpoints.SearchParams` / `BearingQuery` | 同上 |
+| `ProfileEndpoints.PageQuery` | 同上；调用处为 `/mobile/me/favorites/bearings`、`/mobile/me/follows/merchants`、`/mobile/me/history/*`、`/mobile/me/corrections` |
+| `MallEndpoints.MallFeedQuery` | 同上；`/mobile/mall/feed` |
+
+> 根因：最小 API 的 `[AsParameters]` 绑定把**非空值类型属性视为必填查询参数**，缺省即返回 400 且响应体为空（前端与调试者都读不到原因）。属性初始值不参与该判定，只能改可空类型。
+> 影响面：Taro 各请求一直显式带分页，线上表现不变；本次修的是第三方直调与手工调试时"少传分页就 400"的坑。
+> 配套 API 修复见《商城导购设计 v1.0.1》：API 侧 `GetMallFeedQuery.IsAuthenticated` 同因恒 400，那次才是商城货源流全站为空的真凶。
 
 ## 本版增量（v1.8.8）：商家牌级有效期制（+1 端点）
 
