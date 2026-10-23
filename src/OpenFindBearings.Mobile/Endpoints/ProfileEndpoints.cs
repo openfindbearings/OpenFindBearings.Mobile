@@ -110,7 +110,7 @@ public static class ProfileEndpoints
             if (string.IsNullOrEmpty(accessToken))
                 return Results.Unauthorized();
 
-            var path = $"/api/me/favorites/bearings?page={query.Page}&pageSize={query.PageSize}";
+            var path = $"/api/me/favorites/bearings?page={query.Page ?? 1}&pageSize={query.PageSize ?? 20}";
             var result = await api.GetPagedAsync<FavoriteBearing>(path, accessToken, ct);
             return Results.Ok(result ?? new ApiClient.PagedResult<FavoriteBearing>([], 0, 1, 20));
         })
@@ -130,7 +130,7 @@ public static class ProfileEndpoints
             if (string.IsNullOrEmpty(accessToken))
                 return Results.Unauthorized();
 
-            var path = $"/api/me/follows/merchants?page={query.Page}&pageSize={query.PageSize}";
+            var path = $"/api/me/follows/merchants?page={query.Page ?? 1}&pageSize={query.PageSize ?? 20}";
             var result = await api.GetPagedAsync<FollowedMerchant>(path, accessToken, ct);
             return Results.Ok(result ?? new ApiClient.PagedResult<FollowedMerchant>([], 0, 1, 20));
         })
@@ -160,8 +160,10 @@ public static class ProfileEndpoints
 
     public class PageQuery
     {
-        public int Page { get; set; } = 1;
-        public int PageSize { get; set; } = 20;
+        // 改动说明：分页字段改可空——[AsParameters] 把非空值类型当作必填，缺省会返回 400 空体；
+        //   可空后由各调用处兜底第 1 页、20 条
+        public int? Page { get; set; }
+        public int? PageSize { get; set; }
     }
 
     // ============ DTO ============

@@ -99,7 +99,7 @@ public static class MeEndpoints
         {
             var token = GetToken(http);
             if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
-            var path = $"/api/me/history/bearings?page={query.Page}&pageSize={query.PageSize}";
+            var path = $"/api/me/history/bearings?page={query.Page ?? 1}&pageSize={query.PageSize ?? 20}";
             var result = await api.GetPagedAsync<BearingHistoryItem>(path, token, ct);
             return Results.Ok(result ?? new ApiClient.PagedResult<BearingHistoryItem>([], 0, 1, 20));
         })
@@ -112,7 +112,7 @@ public static class MeEndpoints
         {
             var token = GetToken(http);
             if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
-            var path = $"/api/me/history/merchants?page={query.Page}&pageSize={query.PageSize}";
+            var path = $"/api/me/history/merchants?page={query.Page ?? 1}&pageSize={query.PageSize ?? 20}";
             var result = await api.GetPagedAsync<MerchantHistoryItem>(path, token, ct);
             return Results.Ok(result ?? new ApiClient.PagedResult<MerchantHistoryItem>([], 0, 1, 20));
         })
@@ -338,7 +338,7 @@ public static class MeEndpoints
         {
             var token = GetToken(http);
             if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
-            var path = $"/api/me/corrections?page={query.Page}&pageSize={query.PageSize}";
+            var path = $"/api/me/corrections?page={query.Page ?? 1}&pageSize={query.PageSize ?? 20}";
             var result = await api.GetPagedAsync<CorrectionItem>(path, token, ct);
             return Results.Ok(result ?? new ApiClient.PagedResult<CorrectionItem>([], 0, 1, 20));
         })
