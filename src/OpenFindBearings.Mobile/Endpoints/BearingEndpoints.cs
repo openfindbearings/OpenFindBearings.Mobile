@@ -132,10 +132,13 @@ public static class BearingEndpoints
     // v1.6.0 数据可信联动：IsVerified=询价行动门判定（仅认证商家可发起询价）
     // 改动说明（v1.57.1 双徽章并列）：补商家卡级（Grade/GradeDisplay）——与"已认证"徽章并列展示，
     //   认证是类型、卡级是等级，前端不得用认证代替卡级也不得覆盖
+    // 改动说明（v1.8.14 邀请候选口径）：补 Invitable（认证 + 生效 + 未软删）——Taro 邀请候选默认全选
+    //   与详情页邀请入口据此过滤，避免把停用/软删商家勾进邀请单被服务端整单拒绝；
+    //   缺省 true 是滚动发布兼容：旧版 API 不下发该字段时不应把候选全部过滤掉（服务端仍会逐家校验）
     public record BearingMerchantItem(
         Guid MerchantId, string MerchantName, string? Price, int SaleState, string? RestockEta,
         bool IsPinned = false, DateTime? PinnedUntil = null, bool IsVerified = false,
-        int Grade = 0, string? GradeDisplay = null);
+        int Grade = 0, string? GradeDisplay = null, bool Invitable = true);
 
     // v2.16.0 替代品治理：透传三级替代类型与责任提示字段（BearingId=替代品对方轴承，供导航）
     public record InterchangeItem(
