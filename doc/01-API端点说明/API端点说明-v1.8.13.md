@@ -1,4 +1,4 @@
-# Mobile BFF API 端点说明 v1.8.12
+# Mobile BFF API 端点说明 v1.8.13
 
 ## 概述
 
@@ -12,6 +12,7 @@ OpenFindBearings.Mobile 作为移动端 BFF，所有端点统一挂载在 `/mobi
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| v1.8.13 | 2026-10-25 | `GET /mobile/merchants/search` 新增 `excludeInternet` 查询参数并透传上游：互联网来源商家没有账号、收不到站内信，寻货邀请候选必须排除，否则会出现"已通知 N 家"实际无人收到。其余路由与响应结构不变 |
 | v1.8.12 | 2026-10-23 | 同类必填陷阱一次扫净：把仍是裸必填参数的端点全部改为可空并兜底默认值。`/mobile/sourcing/demands`（`onlyOpen`、`page`、`pageSize`，`onlyOpen` 缺省按 true）、`/mobile/sourcing/conversations`、`/mobile/sourcing/conversations/{demandId}/{merchantId}/messages`（`limit` 缺省 30、上限 50）、`/mobile/notifications`、`/mobile/points/transactions`、`/mobile/merchants/claimable`、`/mobile/merchant/bearings`、`/mobile/merchant/treasury/transactions`、`/mobile/merchant/gift-orders`，以及 `MallEndpoints.MallFeedQuery` 的 `Page`/`PageSize`。至此 BFF 全部列表端点不带分页参数也能取到第 1 页 20 条（详见文末"本版增量"） |
 | v1.8.11 | 2026-10-23 | 分页参数不再被当作必填（**契约不变，仅缺省值生效**）：`[AsParameters]` 会把非空值类型属性判为必填查询参数，此前调用方不带 `page`/`pageSize` 时端点直接返回 400 空体。`BearingEndpoints.SearchParams`/`MerchantQuery`、`MerchantEndpoints.SearchParams`/`BearingQuery`、`ProfileEndpoints.PageQuery` 的分页字段统一改为可空，并在拼上游路径时兜底第 1 页、20 条。涉及 `/mobile/bearings/search`、`/mobile/bearings/{id}/merchants`、`/mobile/merchants/search`、`/mobile/merchants/{id}/bearings`、`/mobile/me/favorites/bearings`、`/mobile/me/follows/merchants`、`/mobile/me/history/*`、`/mobile/me/corrections` 与 `/mobile/mall/feed`（详见文末"本版增量"） |
 | v1.8.10 | 2026-10-22 | `GET /mobile/mall/feed` 失败不再兜底成 200 空列表：上游 4xx/5xx 经 `BffProxy.Result` 透传状态码与 `message`，上游成功但响应体解析不出分页数据时返回 502「商城货源响应解析失败」。此前该端点把任何上游故障吞成空列表，前端只能显示「暂无货源」，掩盖真实错误（测试服商城全空即由此暴露为数据问题）。**响应成功结构不变** |
@@ -211,6 +212,7 @@ OpenFindBearings.Mobile 作为移动端 BFF，所有端点统一挂载在 `/mobi
 |------|------|------|------|------|
 | keyword | string | 否 | - | 商家名关键词 |
 | verifiedOnly | bool | 否 | - | 仅已认证商家 |
+| excludeInternet | bool | 否 | - | 排除互联网来源商家（v1.8.13；这类商家无账号、收不到站内信，寻货邀请候选须排除） |
 | sortBy | string | 否 | - | 排序字段 |
 | sortOrder | string | 否 | asc | 排序方向 |
 | page | int | 否 | 1 | 页码 |
@@ -762,4 +764,13 @@ BFF 调用 API 时统一附带请求头 `X-Internal-Token`（值取自配置 `In
 | 商家列表 / 详情 | 无变化：BFF 只下发 `grade`/`gradeDisplay`；有效期与保级字段由 Admin 直连 API 获取，不经 BFF |
 
 > 有效期口径：一期 180 天，升级/续期重发一期；到期按本期成交续期或降档，零成交降至铜牌；在售连续不足超过 15 天直接降普通。
+
+## 本版增量（v1.8.13）：商家搜索排除互联网来源（无新增路由）
+
+| 端点 | 变更 |
+|---|---|
+| `GET /mobile/merchants/search` | 新增可选查询参数 `excludeInternet`（bool），原样透传上游 `/api/merchants/search` 的同名参数 |
+
+> 用途：寻货邀请候选的"其他认证商家"分组需要排除互联网来源商家——这类商家是爬取数据、没有账号，收不到站内信，若出现在候选里会造成"已通知 N 家"实际无人收到。
+> 兼容性：参数可选，不传行为与 v1.8.12 完全一致。
 > 配套文档：《等级玩法设计 v1.3.0》《API 端点说明 v1.58.0》《Admin 功能需求与后端服务映射 v1.48.0》《移动端登录与商户入驻设计 v1.7.45》。
