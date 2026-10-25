@@ -1,4 +1,4 @@
-# Mobile BFF API 端点说明 v1.8.13
+# Mobile BFF API 端点说明 v1.8.14
 
 ## 概述
 
@@ -12,6 +12,7 @@ OpenFindBearings.Mobile 作为移动端 BFF，所有端点统一挂载在 `/mobi
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| v1.8.14 | 2026-10-25 | `GET /mobile/bearings/{id}/merchants` 的 `BearingMerchantItem` 新增 `invitable`（认证 + 生效 + 未软删），供前端过滤邀请候选与邀请入口；缺省 `true` 以兼容旧版 API（服务端仍逐家校验）。`/mobile/mall/feed` 不再透传 `verifiedOnly`（API 已固定认证过滤）。`SourcingPublishRequest.InvitedMerchantIds` 注释订正：空值不再等于"全部匹配" |
 | v1.8.13 | 2026-10-25 | `GET /mobile/merchants/search` 新增 `excludeInternet` 查询参数并透传上游：互联网来源商家没有账号、收不到站内信，寻货邀请候选必须排除，否则会出现"已通知 N 家"实际无人收到。其余路由与响应结构不变 |
 | v1.8.12 | 2026-10-23 | 同类必填陷阱一次扫净：把仍是裸必填参数的端点全部改为可空并兜底默认值。`/mobile/sourcing/demands`（`onlyOpen`、`page`、`pageSize`，`onlyOpen` 缺省按 true）、`/mobile/sourcing/conversations`、`/mobile/sourcing/conversations/{demandId}/{merchantId}/messages`（`limit` 缺省 30、上限 50）、`/mobile/notifications`、`/mobile/points/transactions`、`/mobile/merchants/claimable`、`/mobile/merchant/bearings`、`/mobile/merchant/treasury/transactions`、`/mobile/merchant/gift-orders`，以及 `MallEndpoints.MallFeedQuery` 的 `Page`/`PageSize`。至此 BFF 全部列表端点不带分页参数也能取到第 1 页 20 条（详见文末"本版增量"） |
 | v1.8.11 | 2026-10-23 | 分页参数不再被当作必填（**契约不变，仅缺省值生效**）：`[AsParameters]` 会把非空值类型属性判为必填查询参数，此前调用方不带 `page`/`pageSize` 时端点直接返回 400 空体。`BearingEndpoints.SearchParams`/`MerchantQuery`、`MerchantEndpoints.SearchParams`/`BearingQuery`、`ProfileEndpoints.PageQuery` 的分页字段统一改为可空，并在拼上游路径时兜底第 1 页、20 条。涉及 `/mobile/bearings/search`、`/mobile/bearings/{id}/merchants`、`/mobile/merchants/search`、`/mobile/merchants/{id}/bearings`、`/mobile/me/favorites/bearings`、`/mobile/me/follows/merchants`、`/mobile/me/history/*`、`/mobile/me/corrections` 与 `/mobile/mall/feed`（详见文末"本版增量"） |

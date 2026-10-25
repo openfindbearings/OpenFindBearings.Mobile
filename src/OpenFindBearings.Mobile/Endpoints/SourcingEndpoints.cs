@@ -654,7 +654,11 @@ public record SourcingPublishRequest(string PartNumber, Guid? BearingId, string?
     string? ExpectedDelivery, string? Region, string? Description, bool UsePoints, Guid? MerchantId = null,
     /// <summary>曝光范围：0=公开（默认，进大厅）/ 1=邀请（不进大厅，只推收件人）</summary>
     int Visibility = 0,
-    /// <summary>邀请收件人勾选（空=全部匹配的认证在售商家；仅 Visibility=1 时有意义）</summary>
+    /// <summary>
+    /// 邀请收件人勾选（仅 Visibility=1 时有意义）
+    /// 改动说明（v1.8.14 邀请口径放宽）：空值不再等于"全部匹配的认证在售商家"——
+    ///   服务端在勾选为空时回落到匹配集，匹配集也为空才强制改公开，前端已要求至少勾选一家
+    /// </summary>
     List<Guid>? InvitedMerchantIds = null);
 
 /// <summary>应答请求（v1.5.0 多行标书透传体：报价/库存/交期按行携带）</summary>
