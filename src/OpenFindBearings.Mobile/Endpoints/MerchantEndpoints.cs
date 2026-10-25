@@ -616,6 +616,9 @@ public static class MerchantEndpoints
         // 改动说明：新增排序透传（name/productcount），与 API 商家搜索对齐
         public string? SortBy { get; set; }
         public string? SortOrder { get; set; }
+        // 改动说明（v1.8.13 邀请候选）：透传"排除互联网来源商家"——这类商家无账号、收不到站内信，
+        //   不能出现在寻货邀请候选里
+        public bool? ExcludeInternet { get; set; }
         // 改动说明：分页字段改可空——[AsParameters] 把非空值类型当作必填，缺省即 400 空体
         public int? Page { get; set; }
         public int? PageSize { get; set; }
@@ -826,6 +829,8 @@ public static class MerchantEndpoints
         var parts = new List<string>();
         if (!string.IsNullOrEmpty(p.Keyword)) parts.Add($"keyword={Uri.EscapeDataString(p.Keyword)}");
         if (p.VerifiedOnly.HasValue) parts.Add($"verifiedOnly={p.VerifiedOnly.Value.ToString().ToLower()}");
+        // 改动说明（v1.8.13 邀请候选）：排除互联网来源商家，避免"已通知 N 家"却无人能收到站内信
+        if (p.ExcludeInternet.HasValue) parts.Add($"excludeInternet={p.ExcludeInternet.Value.ToString().ToLower()}");
         if (!string.IsNullOrEmpty(p.SortBy)) parts.Add($"sortBy={Uri.EscapeDataString(p.SortBy)}");
         if (!string.IsNullOrEmpty(p.SortOrder)) parts.Add($"sortOrder={Uri.EscapeDataString(p.SortOrder)}");
         parts.Add($"page={p.Page ?? 1}");
