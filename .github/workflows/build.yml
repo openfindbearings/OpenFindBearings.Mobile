@@ -1,10 +1,11 @@
 name: Build Mobile BFF
 
 on:
-  push:
-    branches: [ main, dev ]
+  # 改动说明（2026-10-25 省 Actions 额度）：只保留 PR 触发（PR 检查已覆盖合并结果），
+  #   去掉 push——dev→main 的 PR 不再同时命中 push(dev) 与 pull_request(main) 跑两遍，合并后也不重复构建
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 env:
   DOTNET_VERSION: '10.0.x'
