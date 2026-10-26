@@ -1,10 +1,14 @@
 name: Build Mobile BFF
 
 on:
+  # 改动说明（2026-10-25 省 Actions 额度）：原 push 监听 [main, dev] 且 PR 监听 main，
+  #   dev→main 的 PR 会同时命中 push(dev) 与 pull_request(main) 跑两遍；现只在 main 上构建，
+  #   dev 日常提交不再触发，PR 一次、合并后一次，另留手动触发
   push:
-    branches: [ main, dev ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 env:
   DOTNET_VERSION: '10.0.x'
