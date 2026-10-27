@@ -1,4 +1,4 @@
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using OpenFindBearings.Mobile.Services;
@@ -58,9 +58,9 @@ public static class MerchantManageEndpoints
             var token = GetToken(http);
             if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
             // 改动说明（v2.13.2 假成功修复）：原 PostAsync 吞 4xx 后无条件回"添加成功"，改用带结果透传
-            var result = await api.PostWithResultAsync<object>("/api/merchant/bearings", body, token, ct);
+            var result = await api.PostWithResultAsync<CreateBearingResult>("/api/merchant/bearings", body, token, ct);
             return result.Success
-                ? Results.Ok(new { success = true, message = "添加成功，已放入仓库中" })
+                ? Results.Ok(new { success = true, id = result.Data?.Id, message = "添加成功，已放入仓库中" })
                 : BffProxy.Result(result, "添加失败");
         })
         .WithName("CreateMerchantBearing")
@@ -148,6 +148,85 @@ public static class MerchantManageEndpoints
         /// 删除商品（v2.15.0 商家删除）：出售中/补货中禁删（须先下架），其余状态物理删除；
         /// 上游失败原因（如"请先下架再删除"）原样透传，前端可直接 toast
         /// </summary>
+        /// <summary>
+        /// 上传商品实拍图（v1.8.15）：multipart 透传 API /api/merchant/bearings/{id}/images，
+        /// 最多 3 张、单张 5MB；已上架商品改图会重新进入审核
+        /// </summary>
+        group.MapPost("/bearings/{id}/images", async (
+            string id,
+            IFormFile file,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            if (file is null || file.Length == 0)
+                return Results.BadRequest(new { success = false, message = "请选择要上传的图片" });
+
+            using var stream = file.OpenReadStream();
+            var result = await api.UploadAsync<BearingImagesResult>(
+                $"/api/merchant/bearings/{id}/images", stream, file.FileName,
+                file.ContentType ?? "application/octet-stream", token, ct);
+            return result == null
+                ? Results.BadRequest(new { success = false, message = "图片上传失败" })
+                : Results.Ok(new { success = true, imageUrls = result.ImageUrls });
+        })
+        .WithName("AddMerchantBearingImage")
+        .WithSummary("上传商品实拍图")
+        .WithDescription("为当前商家的商品上传实拍图，最多 3 张，已上架商品改图需重新审核")
+        .RequireAuthorization()
+        .DisableAntiforgery();
+
+        /// <summary>
+        /// 删除商品实拍图（v1.8.15）：按图片地址删除并返回剩余列表
+        /// </summary>
+        group.MapDelete("/bearings/{id}/images", async (
+            string id,
+            string? url,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            if (string.IsNullOrWhiteSpace(url))
+                return Results.BadRequest(new { success = false, message = "请提供要删除的图片地址" });
+
+            var path = $"/api/merchant/bearings/{id}/images?url={Uri.EscapeDataString(url)}";
+            var result = await api.DeleteWithResultAsync<BearingImagesResult>(path, token, ct);
+            return result.Success
+                ? Results.Ok(new { success = true, imageUrls = result.Data?.ImageUrls })
+                : BffProxy.Result(result, "删除失败");
+        })
+        .WithName("RemoveMerchantBearingImage")
+        .WithSummary("删除商品实拍图")
+        .WithDescription("删除当前商家商品的指定实拍图，已上架商品删图需重新审核")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 调整商品实拍图顺序（v1.8.15）：首项即首图
+        /// </summary>
+        group.MapPut("/bearings/{id}/images/order", async (
+            string id,
+            ReorderBearingImagesRequest body,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var result = await api.PutAsync<BearingImagesResult>(
+                $"/api/merchant/bearings/{id}/images/order", body, token, ct);
+            return result == null
+                ? Results.BadRequest(new { success = false, message = "图片顺序调整失败" })
+                : Results.Ok(new { success = true, imageUrls = result.ImageUrls });
+        })
+        .WithName("ReorderMerchantBearingImages")
+        .WithSummary("调整商品实拍图顺序")
+        .WithDescription("调整当前商家商品实拍图顺序，首项即首图，已上架商品改序需重新审核")
+        .RequireAuthorization();
+
         group.MapDelete("/bearings/{id}", async (
             string id,
             ApiClient api,
@@ -533,7 +612,22 @@ public static class MerchantManageEndpoints
         string? BearingTypeName, string? BrandName,
         string? Dimensions, int SaleState, int ReviewStatus, string? RestockEta,
         string? PriceDescription, string? StockDescription, string? MinOrderDescription,
-        string? Remarks, string? ApprovalComment);
+        string? Remarks, string? ApprovalComment, string[]? ImageUrls, string? CoverImageUrl);
+
+    /// <summary>
+    /// 创建商品结果（v1.8.15）：API 返回新建商家商品关联的 id，供前端立即上传实拍图
+    /// </summary>
+    public record CreateBearingResult(Guid Id, string? Message);
+
+    /// <summary>
+    /// 商品实拍图结果（v1.8.15）：API 各图片操作统一返回当前完整图片列表（首个为首图）
+    /// </summary>
+    public record BearingImagesResult(List<string> ImageUrls);
+
+    /// <summary>
+    /// 调整商品实拍图顺序请求（v1.8.15）：Urls 按目标顺序排列
+    /// </summary>
+    public record ReorderBearingImagesRequest(List<string>? Urls);
 
     /// <summary>
     /// 商户资料（对齐 API MerchantDetailDto 中维护页所需字段）
