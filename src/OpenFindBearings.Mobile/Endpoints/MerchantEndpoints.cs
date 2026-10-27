@@ -752,7 +752,9 @@ public static class MerchantEndpoints
     public record MerchantBearingItem(
         Guid BearingId, string BearingPartNumber, string? BearingOldNumber,
         string? BearingTypeName, string? BrandName,
-        string? Dimensions, string? PriceDescription, int SaleState);
+        string? Dimensions, string? PriceDescription, int SaleState,
+        // 改动说明（v1.8.15 商家商品图）：商家实拍首图，店铺页商品列表优先用它；为空时前端回退型号主图
+        string? CoverImageUrl = null);
 
     /// <summary>
     /// 入驻状态项（对齐 API MerchantApplicationDto）

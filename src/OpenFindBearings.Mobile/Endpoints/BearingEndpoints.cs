@@ -138,7 +138,9 @@ public static class BearingEndpoints
     public record BearingMerchantItem(
         Guid MerchantId, string MerchantName, string? Price, int SaleState, string? RestockEta,
         bool IsPinned = false, DateTime? PinnedUntil = null, bool IsVerified = false,
-        int Grade = 0, string? GradeDisplay = null, bool Invitable = true);
+        int Grade = 0, string? GradeDisplay = null, bool Invitable = true,
+        // 改动说明（v1.8.15 商家商品图）：商家此型号的实拍首图，未上传时为空，前端据此显示缩略图
+        string? CoverImageUrl = null);
 
     // v2.16.0 替代品治理：透传三级替代类型与责任提示字段（BearingId=替代品对方轴承，供导航）
     public record InterchangeItem(
