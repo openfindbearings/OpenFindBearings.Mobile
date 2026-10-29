@@ -36,12 +36,18 @@ public record MallRedeemGiftRequest(Guid ItemId, string ReceiverName, string Rec
 public record MallConfirmResponse(int Settled);
 
 /// <summary>商城货源流条目（v2.14.0 商城导购：BFF 透传 API /api/mall/feed items，供商品卡渲染）</summary>
+/// <remarks>
+/// 改动说明（v1.8.16 商家商品图）：追加 CoverImageUrl / MerchantImageUrls。
+///   原记录没有这两个字段，反序列化时把 API 返回的商家实拍图直接丢弃，
+///   商城卡片只能回退型号主图，商家上传的图在商城形同虚设。
+/// </remarks>
 public record MallFeedItem(
     Guid Id, Guid MerchantId, string? MerchantName, string? MerchantGrade, bool MerchantIsVerified,
     Guid BearingId, string BearingPartNumber, string? BearingOldNumber, string? BearingTypeName,
     string? BrandName, string? Dimensions, string? Image3DUrl, string? Image2DUrl,
     string? PriceDescription, bool IsPriceVisible, decimal? NumericPrice,
-    int SaleState, string? RestockEta);
+    int SaleState, string? RestockEta,
+    string? CoverImageUrl = null, List<string>? MerchantImageUrls = null);
 
 /// <summary>商城货源流查询参数（BFF 绑定查询串后透传 API）</summary>
 public class MallFeedQuery
