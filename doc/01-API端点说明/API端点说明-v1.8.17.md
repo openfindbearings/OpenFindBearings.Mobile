@@ -1,4 +1,4 @@
-# Mobile BFF API 端点说明 v1.8.16
+﻿# Mobile BFF API 端点说明 v1.8.17
 
 ## 概述
 
@@ -12,6 +12,7 @@ OpenFindBearings.Mobile 作为移动端 BFF，所有端点统一挂载在 `/mobi
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| v1.8.17 | 2026-10-29 | **意见反馈三端点**（`/mobile/me/feedback`）：`POST /images`（multipart `file`，透传 API `/api/me/feedback/images`，上传失败经 `UpstreamUploadException` 透传原因）、`POST /feedback`（透传分类/内容/图片/联系方式，限额与校验失败原因走 `PostWithResultAsync` 透传）、`GET /feedback`（本人反馈分页，含 `status`/`statusText`/`adminReply`/`repliedAt`）。新增 DTO `SubmitFeedbackBody`、`FeedbackItem` |
 | v1.8.16 | 2026-10-27 | 商家商品图链路修复：`MyMerchantBearingItem.ImageUrls` 加 `JsonPropertyName("merchantImageUrls")`（原字段名与 API 不符，图片列表恒空、缩略图与删除/设首图入口全部消失）；`MallFeedItem` 追加 `CoverImageUrl`/`MerchantImageUrls`（原记录丢弃商家实拍图，商城卡片只能回退型号主图）；图片上传端点捕获 `UpstreamUploadException` 并透传真实失败原因（原为未捕获异常 → 空体 500）；图片排序改用新增的 `ApiClient.PutWithResultAsync` 透传上游文案 |
 | v1.8.15 | 2026-10-27 | 新增商家商品实拍图三端点：`POST /mobile/merchant/bearings/{id}/images`（multipart `file`，最多 3 张、单张 5MB）、`DELETE .../images?url=`、`PUT .../images/order`（body `{urls}`），均透传 API `/api/merchant/bearings/{id}/images*`；`POST /mobile/merchant/bearings` 创建成功新增返回 `id`（前端新建后立即上传图片）；`MyMerchantBearingItem` 增 `imageUrls`/`coverImageUrl`；型号在售商家 `BearingMerchantItem` 与店铺页 `MerchantBearingItem` 增 `coverImageUrl`（商家首图，无图为空） |
 | v1.8.14 | 2026-10-25 | `GET /mobile/bearings/{id}/merchants` 的 `BearingMerchantItem` 新增 `invitable`（认证 + 生效 + 未软删），供前端过滤邀请候选与邀请入口；缺省 `true` 以兼容旧版 API（服务端仍逐家校验）。`/mobile/mall/feed` 不再透传 `verifiedOnly`（API 已固定认证过滤）。`SourcingPublishRequest.InvitedMerchantIds` 注释订正：空值不再等于"全部匹配" |
@@ -422,6 +423,25 @@ OpenFindBearings.Mobile 作为移动端 BFF，所有端点统一挂载在 `/mobi
 |------|------|------|
 | PUT | `/mobile/me/profile` | 编辑资料（双写 Identity + API） |
 | POST | `/mobile/me/avatar` | 上传头像（jpg/png/webp，≤2MB） |
+
+### 意见反馈（v1.8.17）
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/mobile/me/feedback/images` | 上传反馈附件（multipart `file`，jpg/png/webp、≤5MB），返回 `{ success, url }` |
+| POST | `/mobile/me/feedback` | 提交反馈（`category` 0-3、`content` 5–1000 字、`imageUrls` ≤3、`contact` 选填） |
+| GET | `/mobile/me/feedback` | 我的反馈分页（`?page=&pageSize=`） |
+
+```typescript
+interface SubmitFeedbackBody { category: number; content: string; imageUrls?: string[]; contact?: string }
+interface FeedbackItem {
+  id: string; category: string; categoryText: string; content: string; imageUrls: string[];
+  status: string; statusText: string; adminReply: string | null; repliedAt: string | null; createdAt: string;
+}
+```
+
+- 提交端点统一返回 `{ success, message }`：每日限额（API `Business.FeedbackDailyLimit`）与内容校验失败的原因原样透传。
+- 上传端点失败返回 `{ success:false, message }`（上游真实原因），不会吞成 500。
 
 **PUT /mobile/me/profile 请求体**：
 

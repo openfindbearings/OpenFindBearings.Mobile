@@ -360,6 +360,73 @@ public static class MeEndpoints
         .WithName("GetCorrectionFieldsProxy")
         .WithSummary("可纠错字段清单");
 
+        // ============ 意见反馈（v1.8.17） ============
+
+        /// <summary>
+        /// 上传反馈附件：透传 multipart 到 API /api/me/feedback/images，
+        /// 原样返回相对媒体键（/uploads/feedback/...），由前端拼媒体源展示
+        /// </summary>
+        group.MapPost("/feedback/images", async (
+            IFormFile file, HttpContext http, ApiClient api, CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            if (file == null || file.Length == 0)
+                return Results.Ok(new { success = false, message = "请选择图片" });
+
+            using var stream = file.OpenReadStream();
+            // 改动说明（v1.8.17）：上游失败原因（格式/大小/未登录）经 UpstreamUploadException 透传，
+            // 不吞成笼统的"上传失败"
+            try
+            {
+                var data = await api.UploadAsync<UrlResult>(
+                    "/api/me/feedback/images", stream, file.FileName, file.ContentType ?? "image/jpeg", token, ct);
+                if (data?.Url == null)
+                    return Results.Ok(new { success = false, message = "上传失败" });
+
+                return Results.Ok(new { success = true, url = data.Url });
+            }
+            catch (ApiClient.UpstreamUploadException ex)
+            {
+                return Results.Ok(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("UploadFeedbackImageProxy")
+        .DisableAntiforgery()
+        .WithSummary("上传反馈附件图片");
+
+        /// <summary>
+        /// 提交意见反馈：透传 API /api/me/feedback。
+        /// 每日限额与内容校验失败时把上游 message 原样带给客户端
+        /// </summary>
+        group.MapPost("/feedback", async (
+            SubmitFeedbackBody body, HttpContext http, ApiClient api, CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+
+            var result = await api.PostWithResultAsync<object>(
+                "/api/me/feedback",
+                new { category = body.Category, content = body.Content, imageUrls = body.ImageUrls, contact = body.Contact },
+                token, ct);
+            return Results.Ok(new { success = result.Success, message = result.ErrorText ?? "感谢反馈，我们会尽快查看" });
+        })
+        .WithName("SubmitFeedbackProxy")
+        .WithSummary("提交意见反馈");
+
+        /// <summary>我的意见反馈列表（分页，含处理状态与管理员回复）</summary>
+        group.MapGet("/feedback", async (
+            HttpContext http, ApiClient api, [AsParameters] ProfileEndpoints.PageQuery query, CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var path = $"/api/me/feedback?page={query.Page ?? 1}&pageSize={query.PageSize ?? 20}";
+            var result = await api.GetPagedAsync<FeedbackItem>(path, token, ct);
+            return Results.Ok(result ?? new ApiClient.PagedResult<FeedbackItem>([], 0, 1, 20));
+        })
+        .WithName("GetMyFeedbacksProxy")
+        .WithSummary("我的意见反馈列表");
+
         /// <summary>
         /// 注销账户代理（v1.7.3）：透传 API /api/me/deactivate。守卫拒绝（如唯一管理员）时
         /// 必须把上游 message 原样带给客户端引导处理，故用 PostWithResultAsync 而非 Void
@@ -442,4 +509,12 @@ public static class MeEndpoints
 
     /// <summary>批量删除历史请求（两组目标 ID，v2.12.0 列表多选）</summary>
     public record BatchHistoryDeleteRequest(List<Guid>? BearingIds, List<Guid>? MerchantIds);
+
+    /// <summary>意见反馈提交请求体（v1.8.17，分类枚举值 + 内容 + 附件 + 联系方式）</summary>
+    public record SubmitFeedbackBody(int Category, string Content, List<string>? ImageUrls, string? Contact);
+
+    /// <summary>我的意见反馈条目（v1.8.17，对齐 API MyFeedbackDto 前端所需字段）</summary>
+    public record FeedbackItem(
+        Guid Id, string Category, string CategoryText, string Content, List<string> ImageUrls,
+        string Status, string StatusText, string? AdminReply, DateTime? RepliedAt, DateTime CreatedAt);
 }
