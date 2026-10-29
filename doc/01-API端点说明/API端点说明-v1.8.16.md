@@ -1,4 +1,4 @@
-# Mobile BFF API 端点说明 v1.8.15
+# Mobile BFF API 端点说明 v1.8.16
 
 ## 概述
 
@@ -12,6 +12,7 @@ OpenFindBearings.Mobile 作为移动端 BFF，所有端点统一挂载在 `/mobi
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| v1.8.16 | 2026-10-27 | 商家商品图链路修复：`MyMerchantBearingItem.ImageUrls` 加 `JsonPropertyName("merchantImageUrls")`（原字段名与 API 不符，图片列表恒空、缩略图与删除/设首图入口全部消失）；`MallFeedItem` 追加 `CoverImageUrl`/`MerchantImageUrls`（原记录丢弃商家实拍图，商城卡片只能回退型号主图）；图片上传端点捕获 `UpstreamUploadException` 并透传真实失败原因（原为未捕获异常 → 空体 500）；图片排序改用新增的 `ApiClient.PutWithResultAsync` 透传上游文案 |
 | v1.8.15 | 2026-10-27 | 新增商家商品实拍图三端点：`POST /mobile/merchant/bearings/{id}/images`（multipart `file`，最多 3 张、单张 5MB）、`DELETE .../images?url=`、`PUT .../images/order`（body `{urls}`），均透传 API `/api/merchant/bearings/{id}/images*`；`POST /mobile/merchant/bearings` 创建成功新增返回 `id`（前端新建后立即上传图片）；`MyMerchantBearingItem` 增 `imageUrls`/`coverImageUrl`；型号在售商家 `BearingMerchantItem` 与店铺页 `MerchantBearingItem` 增 `coverImageUrl`（商家首图，无图为空） |
 | v1.8.14 | 2026-10-25 | `GET /mobile/bearings/{id}/merchants` 的 `BearingMerchantItem` 新增 `invitable`（认证 + 生效 + 未软删），供前端过滤邀请候选与邀请入口；缺省 `true` 以兼容旧版 API（服务端仍逐家校验）。`/mobile/mall/feed` 不再透传 `verifiedOnly`（API 已固定认证过滤）。`SourcingPublishRequest.InvitedMerchantIds` 注释订正：空值不再等于"全部匹配" |
 | v1.8.13 | 2026-10-25 | `GET /mobile/merchants/search` 新增 `excludeInternet` 查询参数并透传上游：互联网来源商家没有账号、收不到站内信，寻货邀请候选必须排除，否则会出现"已通知 N 家"实际无人收到。其余路由与响应结构不变 |
@@ -776,3 +777,17 @@ BFF 调用 API 时统一附带请求头 `X-Internal-Token`（值取自配置 `In
 > 用途：寻货邀请候选的"其他认证商家"分组需要排除互联网来源商家——这类商家是爬取数据、没有账号，收不到站内信，若出现在候选里会造成"已通知 N 家"实际无人收到。
 > 兼容性：参数可选，不传行为与 v1.8.12 完全一致。
 > 配套文档：《等级玩法设计 v1.3.0》《API 端点说明 v1.58.0》《Admin 功能需求与后端服务映射 v1.48.0》《移动端登录与商户入驻设计 v1.7.45》。
+
+## 本版增量（v1.8.16）：商家商品图链路修复（无新增路由）
+
+| 位置 | 变更 |
+|---|---|
+| `MerchantManageEndpoints.MyMerchantBearingItem` | `ImageUrls` 标注 `[JsonPropertyName("merchantImageUrls")]`，对上 API 的 `MerchantBearingDto.merchantImageUrls`；对外 JSON 仍是 `imageUrls`，Taro 与文档无需改 |
+| `MallEndpoints.MallFeedItem` | 末尾追加 `CoverImageUrl`、`MerchantImageUrls`（可选参数，不影响既有构造点），商城卡片据此优先展示商家实拍图 |
+| `POST /mobile/merchant/bearings/{id}/images` | 捕获 `ApiClient.UpstreamUploadException`，失败返回 `{ success:false, message }` 并带上游原因（超 3 张 / 超 5MB / 格式不符 / 非本店成员） |
+| `PUT /mobile/merchant/bearings/{id}/images/order` | 改用新增的 `ApiClient.PutWithResultAsync`，失败时透传「图片列表已变化，请刷新后重试」等上游文案，不再统一吞成「图片顺序调整失败」 |
+
+> 根因：BFF 用严格位置记录接收 API 响应，字段名必须与上游 JSON 完全一致（`JsonOptions` 仅开大小写不敏感）。
+>   图片字段在 API 叫 `merchantImageUrls`，BFF 写成 `ImageUrls` 时绑定不到；`MallFeedItem` 则根本没声明商家图字段，反序列化直接丢弃。
+> 影响面：修复前商家管理页永远显示「商品实拍图（0/3）」且无法删除/设首图；商城卡片永远显示型号主图。
+> 配套文档：《API 端点说明 v1.59.4》《商城导购设计 v1.0.5》《移动端登录与商户入驻设计 v1.7.49》。

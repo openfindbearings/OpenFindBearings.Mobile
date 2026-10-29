@@ -303,6 +303,61 @@ public class ApiClient
     }
 
     /// <summary>
+    /// PUT 请求并透传错误（v1.8.16）：与 DeleteWithResultAsync 同构，保留上游状态码/错误码/detail 文案。
+    /// 改动说明：商品图片排序原用 PutAsync，失败一律吞成 null，前端只能提示"调整失败"，
+    ///   看不到"图片列表已变化，请刷新后重试"这类可操作原因。
+    /// </summary>
+    public async Task<ApiCallResult<T>> PutWithResultAsync<T>(
+        string path, object body, string? accessToken = null, CancellationToken ct = default) where T : class
+    {
+        HttpResponseMessage response;
+        try
+        {
+            var client = CreateApiClient(accessToken);
+            response = await client.PutAsJsonAsync(path, body, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "API PUT {Path} 连接失败", path);
+            return new ApiCallResult<T>(false, 502, null, "UPSTREAM_UNREACHABLE", "上游服务连接失败，请稍后重试", default);
+        }
+        using (response)
+        {
+            var status = (int)response.StatusCode;
+            var text = await response.Content.ReadAsStringAsync(ct);
+            JsonElement bodyJson = default;
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                try { bodyJson = JsonDocument.Parse(text).RootElement.Clone(); }
+                catch (JsonException) { /* 非 JSON 体（网关 HTML 等）走默认错误文案 */ }
+            }
+            var errCode = GetExtFromBody(bodyJson, "code");
+            var errText = GetExtFromBody(bodyJson, "detail")
+                       ?? GetExtFromBody(bodyJson, "message")
+                       ?? GetExtFromBody(bodyJson, "title");
+            if (response.IsSuccessStatusCode)
+            {
+                T? data = null;
+                if (bodyJson.ValueKind == JsonValueKind.Object)
+                {
+                    try
+                    {
+                        var wrapper = JsonSerializer.Deserialize<ApiResponseWrapper<T>>(bodyJson.GetRawText(), JsonOptions);
+                        data = wrapper?.Data;
+                    }
+                    catch (JsonException ex)
+                    {
+                        _logger.LogWarning(ex, "API PUT {Path} 响应解析失败", path);
+                        return new ApiCallResult<T>(false, status, null, "RESPONSE_PARSE_ERROR", "响应解析失败", bodyJson);
+                    }
+                }
+                return new ApiCallResult<T>(true, status, data, null, null, bodyJson);
+            }
+            return new ApiCallResult<T>(false, status, null, errCode, errText, bodyJson);
+        }
+    }
+
+    /// <summary>
     /// 上传文件（multipart/form-data 转发到 API，带用户 JWT）。
     /// 改动说明：头像上传需要透传 IFormFile，普通 JSON 方法不适用；
     /// 返回 API 的 data（{url} 相对路径），由调用方拼公网主机名。

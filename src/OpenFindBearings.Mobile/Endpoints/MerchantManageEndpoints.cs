@@ -1,5 +1,6 @@
 ﻿using System.Net.Http.Headers;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
 using OpenFindBearings.Mobile.Services;
 
@@ -165,12 +166,21 @@ public static class MerchantManageEndpoints
                 return Results.BadRequest(new { success = false, message = "请选择要上传的图片" });
 
             using var stream = file.OpenReadStream();
-            var result = await api.UploadAsync<BearingImagesResult>(
-                $"/api/merchant/bearings/{id}/images", stream, file.FileName,
-                file.ContentType ?? "application/octet-stream", token, ct);
-            return result == null
-                ? Results.BadRequest(new { success = false, message = "图片上传失败" })
-                : Results.Ok(new { success = true, imageUrls = result.ImageUrls });
+            // 改动说明（v1.8.16）：UploadAsync 对非 2xx 抛 UpstreamUploadException，
+            //   原先未捕获会变成空体 500，前端只能提示"上传失败（500）"，真实原因（超 3 张/超 5MB/格式不符/非本店成员）全部丢失
+            try
+            {
+                var result = await api.UploadAsync<BearingImagesResult>(
+                    $"/api/merchant/bearings/{id}/images", stream, file.FileName,
+                    file.ContentType ?? "application/octet-stream", token, ct);
+                return result == null
+                    ? Results.BadRequest(new { success = false, message = "图片上传失败" })
+                    : Results.Ok(new { success = true, imageUrls = result.ImageUrls });
+            }
+            catch (ApiClient.UpstreamUploadException ex)
+            {
+                return Results.Ok(new { success = false, message = ex.Message });
+            }
         })
         .WithName("AddMerchantBearingImage")
         .WithSummary("上传商品实拍图")
@@ -216,11 +226,12 @@ public static class MerchantManageEndpoints
         {
             var token = GetToken(http);
             if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
-            var result = await api.PutAsync<BearingImagesResult>(
+            // 改动说明（v1.8.16）：改用透传错误的 PUT，失败时把"图片列表已变化，请刷新后重试"原样给前端
+            var result = await api.PutWithResultAsync<BearingImagesResult>(
                 $"/api/merchant/bearings/{id}/images/order", body, token, ct);
-            return result == null
-                ? Results.BadRequest(new { success = false, message = "图片顺序调整失败" })
-                : Results.Ok(new { success = true, imageUrls = result.ImageUrls });
+            return result.Success
+                ? Results.Ok(new { success = true, imageUrls = result.Data?.ImageUrls })
+                : BffProxy.Result(result, "图片顺序调整失败");
         })
         .WithName("ReorderMerchantBearingImages")
         .WithSummary("调整商品实拍图顺序")
@@ -607,12 +618,16 @@ public static class MerchantManageEndpoints
     /// </summary>
     // 改动说明（v2.13.2 幻影字段修复）：对齐 API MerchantBearingDto（见 MerchantEndpoints.MerchantBearingItem）——
     //   OldNumber/InnerDiameter/OuterDiameter/Width/Price 属幻影名，实为 BearingOldNumber/Dimensions/PriceDescription
+    // 改动说明（v1.8.16 图片绑定修复）：API 的商家图片字段名是 merchantImageUrls，原样写 ImageUrls
+    //   永远绑定不上（图片列表恒空、缩略图与删除/设首图入口全部消失），故显式映射并保持对外 JSON 仍为 imageUrls
     public record MyMerchantBearingItem(
         Guid Id, Guid BearingId, string BearingPartNumber, string? BearingOldNumber,
         string? BearingTypeName, string? BrandName,
         string? Dimensions, int SaleState, int ReviewStatus, string? RestockEta,
         string? PriceDescription, string? StockDescription, string? MinOrderDescription,
-        string? Remarks, string? ApprovalComment, string[]? ImageUrls, string? CoverImageUrl);
+        string? Remarks, string? ApprovalComment,
+        [property: JsonPropertyName("merchantImageUrls")] string[]? ImageUrls,
+        string? CoverImageUrl);
 
     /// <summary>
     /// 创建商品结果（v1.8.15）：API 返回新建商家商品关联的 id，供前端立即上传实拍图
