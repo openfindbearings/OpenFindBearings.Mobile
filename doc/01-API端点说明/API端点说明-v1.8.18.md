@@ -1,4 +1,4 @@
-﻿# Mobile BFF API 端点说明 v1.8.17
+﻿# Mobile BFF API 端点说明 v1.8.18
 
 ## 概述
 
@@ -12,6 +12,7 @@ OpenFindBearings.Mobile 作为移动端 BFF，所有端点统一挂载在 `/mobi
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| v1.8.18 | 2026-10-30 | **互联网数据展示 + 搜索结果分流（无新增端点）**：`MerchantItem`/`MerchantDetail` 新增 `IsInternetSource`，`MerchantDetail` 新增 `Contact`（`MerchantContactItem`：联系人/固话/脱敏手机/邮箱/地址，仅互联网来源商家下发）；`BearingMerchantItem` 新增 `IsInternetSource`/`ContactPhone`；`BearingItem` 新增 `VerifiedMerchantCount`（认证商家有货家数，前端据此给「寻货」入口或仅标互联网数据） |
 | v1.8.17 | 2026-10-29 | **意见反馈三端点**（`/mobile/me/feedback`）：`POST /images`（multipart `file`，透传 API `/api/me/feedback/images`，上传失败经 `UpstreamUploadException` 透传原因）、`POST /feedback`（透传分类/内容/图片/联系方式，限额与校验失败原因走 `PostWithResultAsync` 透传）、`GET /feedback`（本人反馈分页，含 `status`/`statusText`/`adminReply`/`repliedAt`）。新增 DTO `SubmitFeedbackBody`、`FeedbackItem` |
 | v1.8.16 | 2026-10-27 | 商家商品图链路修复：`MyMerchantBearingItem.ImageUrls` 加 `JsonPropertyName("merchantImageUrls")`（原字段名与 API 不符，图片列表恒空、缩略图与删除/设首图入口全部消失）；`MallFeedItem` 追加 `CoverImageUrl`/`MerchantImageUrls`（原记录丢弃商家实拍图，商城卡片只能回退型号主图）；图片上传端点捕获 `UpstreamUploadException` 并透传真实失败原因（原为未捕获异常 → 空体 500）；图片排序改用新增的 `ApiClient.PutWithResultAsync` 透传上游文案 |
 | v1.8.15 | 2026-10-27 | 新增商家商品实拍图三端点：`POST /mobile/merchant/bearings/{id}/images`（multipart `file`，最多 3 张、单张 5MB）、`DELETE .../images?url=`、`PUT .../images/order`（body `{urls}`），均透传 API `/api/merchant/bearings/{id}/images*`；`POST /mobile/merchant/bearings` 创建成功新增返回 `id`（前端新建后立即上传图片）；`MyMerchantBearingItem` 增 `imageUrls`/`coverImageUrl`；型号在售商家 `BearingMerchantItem` 与店铺页 `MerchantBearingItem` 增 `coverImageUrl`（商家首图，无图为空） |
