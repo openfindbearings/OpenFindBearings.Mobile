@@ -114,7 +114,10 @@ public static class BearingEndpoints
         string BearingType, decimal InnerDiameter, decimal OuterDiameter, decimal Width,
         string BrandName, string? Image3DUrl, string? Image2DUrl,
         // v1.6.0 数据可信联动：参数来源（Internet/OcrExtract/SeedData=仅供参考）
-        string? DataSource = null);
+        string? DataSource = null,
+        // 改动说明（v1.8.19 搜索结果分流）：该型号认证商家有货家数——大于 0 时搜索结果提供「寻货」
+        //   入口定向邀请认证商家，为 0 时仅按互联网数据公布，不提供寻货入口
+        int VerifiedMerchantCount = 0);
 
     // 改动说明（v2.13.2 幻影字段修复）：EnglishName 上游（BearingDto/BearingDetailDto）并不存在，
 //   反序列化恒 null，故移除；类型走 BearingType（API 详情已补填）
@@ -140,7 +143,10 @@ public static class BearingEndpoints
         bool IsPinned = false, DateTime? PinnedUntil = null, bool IsVerified = false,
         int Grade = 0, string? GradeDisplay = null, bool Invitable = true,
         // 改动说明（v1.8.15 商家商品图）：商家此型号的实拍首图，未上传时为空，前端据此显示缩略图
-        string? CoverImageUrl = null);
+        string? CoverImageUrl = null,
+        // 改动说明（v1.8.19 互联网数据展示）：互联网来源标记 + 可公开联系电话（手机已脱敏、固话原样），
+        //   前端在"其他在售"段据此标注「互联网数据」并展示电话
+        bool IsInternetSource = false, string? ContactPhone = null);
 
     // v2.16.0 替代品治理：透传三级替代类型与责任提示字段（BearingId=替代品对方轴承，供导航）
     public record InterchangeItem(

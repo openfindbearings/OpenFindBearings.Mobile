@@ -729,7 +729,9 @@ public static class MerchantEndpoints
         Guid Id, string Name, string? CompanyName, string? Type,
         bool IsVerified, string? Status, int? ProductCount, string? LogoUrl,
         // 改动说明（v2.13.2）：透传 API 类型中文展示名
-        string? TypeDisplay = null);
+        string? TypeDisplay = null,
+        // 改动说明（v1.8.19 互联网数据展示）：透传来源标记，前端据此区分互联网数据与平台商家
+        bool IsInternetSource = false);
 
     // 对齐 API MerchantDto 字段（补 LogoUrl/ContactPerson/Mobile/Email/Address/Grade/FollowerCount/ProductCount）
     public record MerchantDetail(
@@ -744,7 +746,16 @@ public static class MerchantEndpoints
         // v2.6.0 商家主页：成员标记（"进入管理"横幅）与集体任务累计达成数（勋章园卡通关史）
         bool IsMerchantMember = false, int CompletedTaskCount = 0,
         // 改动说明（v2.13.2）：透传类型中文展示名（商家详情页此前直接渲染枚举名英文）
-        string? TypeDisplay = null);
+        string? TypeDisplay = null,
+        // 改动说明（v1.8.19 互联网数据展示）：互联网来源标记 + 脱敏后的公开联系方式，
+        //   仅互联网来源商家下发 Contact（手机已脱敏、固话原样）；认证商家仍走寻货撮合互给
+        bool IsInternetSource = false, MerchantContactItem? Contact = null);
+
+    /// <summary>
+    /// 商家公开联系方式项（v1.8.19）：仅互联网来源商家随详情下发，手机号由 API 脱敏
+    /// </summary>
+    public record MerchantContactItem(
+        string? ContactPerson, string? Phone, string? Mobile, string? Email, string? Address);
 
     // 改动说明（v2.13.2 幻影字段修复）：对齐 API MerchantBearingDto——OldNumber/InnerDiameter/OuterDiameter/
     //   Width/Price 上游并不存在（实为 BearingOldNumber/Dimensions/PriceDescription），旧名反序列化恒 null，
