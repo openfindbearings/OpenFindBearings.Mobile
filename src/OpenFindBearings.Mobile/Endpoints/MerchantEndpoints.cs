@@ -730,8 +730,12 @@ public static class MerchantEndpoints
         bool IsVerified, string? Status, int? ProductCount, string? LogoUrl,
         // 改动说明（v2.13.2）：透传 API 类型中文展示名
         string? TypeDisplay = null,
-        // 改动说明（v1.8.19 互联网数据展示）：透传来源标记，前端据此区分互联网数据与平台商家
-        bool IsInternetSource = false);
+        // 改动说明（v1.8.18 互联网数据展示）：透传来源标记，前端据此区分互联网数据与平台商家
+        bool IsInternetSource = false,
+        // 改动说明（v1.8.19 徽章统一）：透传牌级（枚举名与中文展示名）——Taro 搜索商家 Tab 与其它
+        //   列表统一展示"身份徽章 + 等级徽章"，此前该 DTO 缺牌级，搜索列表只能显示一句"· 已认证"。
+        //   API MerchantDto 本就有这两个字段，此处仅补声明（record 按名反序列化，无需映射代码）
+        string? Grade = null, string? GradeDisplay = null);
 
     // 对齐 API MerchantDto 字段（补 LogoUrl/ContactPerson/Mobile/Email/Address/Grade/FollowerCount/ProductCount）
     public record MerchantDetail(
@@ -747,12 +751,12 @@ public static class MerchantEndpoints
         bool IsMerchantMember = false, int CompletedTaskCount = 0,
         // 改动说明（v2.13.2）：透传类型中文展示名（商家详情页此前直接渲染枚举名英文）
         string? TypeDisplay = null,
-        // 改动说明（v1.8.19 互联网数据展示）：互联网来源标记 + 脱敏后的公开联系方式，
+        // 改动说明（v1.8.18 互联网数据展示）：互联网来源标记 + 脱敏后的公开联系方式，
         //   仅互联网来源商家下发 Contact（手机已脱敏、固话原样）；认证商家仍走寻货撮合互给
         bool IsInternetSource = false, MerchantContactItem? Contact = null);
 
     /// <summary>
-    /// 商家公开联系方式项（v1.8.19）：仅互联网来源商家随详情下发，手机号由 API 脱敏
+    /// 商家公开联系方式项（v1.8.18）：仅互联网来源商家随详情下发，手机号由 API 脱敏
     /// </summary>
     public record MerchantContactItem(
         string? ContactPerson, string? Phone, string? Mobile, string? Email, string? Address);
