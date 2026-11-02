@@ -708,10 +708,12 @@ public record SourcingMerchantDemandItem(
     DateTime ExpiryAt,
     bool IsPinned = false,
     DateTime? PinnedUntil = null,
-    /// <summary>经办人昵称（管理操作仅经办人本人，其他成员只读）</summary>
+    /// <summary>经办人昵称（管理操作限经办人或本店管理员，其他成员只读）</summary>
     string? PublisherName = null,
-    /// <summary>当前用户是否经办人（前端出/藏管理按钮）</summary>
+    /// <summary>当前用户是否经办人（前端展示"由我发布"）</summary>
     bool IsMine = false,
+    // 改动说明（v1.8.20）：管理权由 API 统一下发（经办人本人或本店在职管理员），前端据此出/藏管理按钮
+    bool CanManage = false,
     // 改动说明（v1.8.0 公开/邀请）：曝光范围透传（本店寻货卡片出"邀请(N家)"）
     bool IsPrivate = false,
     int InvitedCount = 0);
