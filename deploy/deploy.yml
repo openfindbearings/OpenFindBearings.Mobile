@@ -23,6 +23,12 @@ spec:
         image: ghcr.io/openfindbearings/openfindbearings-mobile:latest
         ports:
         - containerPort: 8080
+        # 改动说明（2026-11-05）：补 requests 使 QoS 从 BestEffort 变为 Burstable，
+        # 节点内存紧张时不再是最先被驱逐/OOM 的一批；不设 limit，避免正常使用被限死
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
 
         # 改动说明：环境变量分为 ConfigMap（非敏感）和 Secret（敏感）两部分注入
         envFrom:
