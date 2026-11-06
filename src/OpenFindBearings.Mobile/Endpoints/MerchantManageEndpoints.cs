@@ -8,7 +8,7 @@ namespace OpenFindBearings.Mobile.Endpoints;
 
 /// <summary>
 /// 商户管理代理端点（/mobile/merchant/*）
-/// 代理 API /api/merchant/* 的自家轴承管理（列表/添加/上下架/Excel 导入/证照材料上传 v1.6.0）
+/// 代理 API /api/merchant/* 的自家轴承管理（列表/添加/上下架/证照材料上传 v1.6.0）
 /// 统一模式：从入站 Authorization 头取用户 access token 透传；缺 token 一律 401
 /// </summary>
 public static class MerchantManageEndpoints
