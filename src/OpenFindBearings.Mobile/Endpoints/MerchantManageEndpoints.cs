@@ -8,7 +8,7 @@ namespace OpenFindBearings.Mobile.Endpoints;
 
 /// <summary>
 /// 商户管理代理端点（/mobile/merchant/*）
-/// 代理 API /api/merchant/* 的自家轴承管理（列表/添加/上下架/Excel 导入/证照材料上传 v1.6.0）
+/// 代理 API /api/merchant/* 的自家轴承管理（列表/添加/上下架/证照材料上传 v1.6.0）
 /// 统一模式：从入站 Authorization 头取用户 access token 透传；缺 token 一律 401
 /// </summary>
 public static class MerchantManageEndpoints
@@ -254,6 +254,31 @@ public static class MerchantManageEndpoints
         .WithName("RemoveMerchantBearing")
         .WithSummary("删除商品")
         .WithDescription("删除当前商户的商品；出售中/补货中需先下架，其余状态物理删除")
+        .RequireAuthorization();
+
+        /// <summary>
+        /// 批量操作商品（v1.8.21）：上架/下架/补货中/按百分比调价/删除，透传 API 逐件结果。
+        /// pricePreview 只预演不落库，供前端确认前展示调整前后文本。
+        /// </summary>
+        group.MapPost("/bearings/batch", async (
+            BatchBearingRequest body,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+
+            var result = await api.PostWithResultAsync<BatchBearingResult>(
+                "/api/merchant/bearings/batch", body, token, ct);
+
+            return result.Success && result.Data != null
+                ? Results.Ok(result.Data)
+                : BffProxy.Result(result, "批量操作失败");
+        })
+        .WithName("BatchMerchantBearings")
+        .WithSummary("批量操作商品")
+        .WithDescription("批量上架/下架/补货中/按百分比调价/删除，逐件返回成功或跳过原因，单次最多 100 件")
         .RequireAuthorization();
 
 
@@ -645,6 +670,34 @@ public static class MerchantManageEndpoints
     public record ReorderBearingImagesRequest(List<string>? Urls);
 
     /// <summary>
+    /// 商品批量操作请求（v1.8.21）：Action 取值 onshelf / offshelf / restock / pricePercent / pricePreview / delete
+    /// </summary>
+    public record BatchBearingRequest(
+        string? Action,
+        List<Guid>? Ids,
+        decimal? Percent,
+        string? RestockEta);
+
+    /// <summary>
+    /// 商品批量操作单件结果（对齐 API BatchMerchantBearingItemResult）
+    /// </summary>
+    public record BatchBearingItemResult(
+        Guid Id,
+        string? PartNumber,
+        bool Success,
+        string? Message,
+        string? OldPriceDescription,
+        string? NewPriceDescription);
+
+    /// <summary>
+    /// 商品批量操作汇总结果（对齐 API BatchMerchantBearingResult）
+    /// </summary>
+    public record BatchBearingResult(
+        int Succeeded,
+        int Skipped,
+        List<BatchBearingItemResult> Results);
+
+    /// <summary>
     /// 商户资料（对齐 API MerchantDetailDto 中维护页所需字段）
     /// </summary>
     public record MerchantProfile(
@@ -667,3 +720,4 @@ public static class MerchantManageEndpoints
     // 改动说明（v2.17.0 替代品字典化）：删除 InterchangeSubmitRequest / InterchangeBearingRef /
     //   InterchangeSubmissionItem 三个 record（商家替代候选代理已取消）
 }
+

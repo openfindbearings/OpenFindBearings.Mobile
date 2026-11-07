@@ -1,4 +1,4 @@
-﻿# Mobile BFF API 端点说明 v1.8.20
+﻿# Mobile BFF API 端点说明 v1.8.21
 
 ## 概述
 
@@ -12,6 +12,7 @@ OpenFindBearings.Mobile 作为移动端 BFF，所有端点统一挂载在 `/mobi
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| v1.8.21 | 2026-11-06 | **商品批量维护代理（+1 端点）**：新增 `POST /mobile/merchant/bearings/batch`，透传 API `/api/merchant/bearings/batch` 的 `{ action, ids, percent?, restockEta? }` 与逐件结果 `{ succeeded, skipped, results[] }`（含 `oldPriceDescription`/`newPriceDescription`），上游失败原因原样透传 |
 | v1.8.20 | 2026-11-02 | **寻货管理权代办（无新增端点）**：`SourcingMerchantDemandItem` 新增 `CanManage` 透传（API `canManage` = 经办人本人或本店在职管理员），前端据此出/藏删除、转公开、多选入口；`IsMine` 语义收窄为"当前用户是经办人"（展示"由我发布"）。批量删除/取消/转公开/选定由 API 侧支持管理员代办，BFF 端点与请求体不变 |
 | v1.8.19 | 2026-11-01 | **商家等级徽章统一（无新增端点）**：`MerchantItem` 新增 `Grade`/`GradeDisplay` 透传（API `MerchantDto` 本就有这两个字段，此前 BFF 记录未声明，导致 Taro 搜索商家 Tab 只能显示"· 已认证"文本）。前端据此在搜索列表、型号详情在售商家行、商家详情头部统一渲染"身份徽章 + 等级徽章"，并把互联网来源商家显示为「互联网」（库里同为 Ordinary，但无账号、未入驻） |
 | v1.8.18 | 2026-10-30 | **互联网数据展示 + 搜索结果分流（无新增端点）**：`MerchantItem`/`MerchantDetail` 新增 `IsInternetSource`，`MerchantDetail` 新增 `Contact`（`MerchantContactItem`：联系人/固话/脱敏手机/邮箱/地址，仅互联网来源商家下发）；`BearingMerchantItem` 新增 `IsInternetSource`/`ContactPhone`；`BearingItem` 新增 `VerifiedMerchantCount`（认证商家有货家数，前端据此给「寻货」入口或仅标互联网数据） |
@@ -655,6 +656,7 @@ BFF 调用 API 时统一附带请求头 `X-Internal-Token`（值取自配置 `In
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | DELETE | /mobile/merchant/bearings/{id} | 商家删除商品（代理 API DELETE；出售中/补货中禁删，失败原因透传，其余物理删除） |
+| POST | /mobile/merchant/bearings/batch | v1.8.21 批量维护（上架/下架/补货/按百分比改价/删除，单次 ≤100 件，逐件返回成功或跳过原因） |
 | ~~POST / GET~~ `/mobile/merchant/interchanges` | **已于 v1.8.1 移除**（替代品字典化）：商家不再报替代候选，改走轴承「纠错」的 `interchange` 字段（由平台核实后在替代品管理页落地） |
 
 ### 变更端点 / 字段
