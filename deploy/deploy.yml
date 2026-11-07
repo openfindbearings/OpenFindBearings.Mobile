@@ -38,6 +38,10 @@ spec:
         # 改动说明（2026-11-07）：改用 Workstation GC，规避 .NET Server GC 线程在 libc 内崩溃（exit 139）
         - name: DOTNET_gcServer
           value: "0"
+        # 改动说明（2026-11-07）：关闭 .NET W^X 可执行页切换，规避 kernel 7.0.0-43 + libc 2.43 下
+        #   libc 固定偏移 general protection fault（exit 139），崩溃线程随机（BGC / TP Worker）
+        - name: DOTNET_EnableWriteXorExecute
+          value: "0"
         envFrom:
         - configMapRef:
             name: openfindbearings-mobile-config
