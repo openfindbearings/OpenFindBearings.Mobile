@@ -24,13 +24,20 @@ spec:
         ports:
         - containerPort: 8080
         # 改动说明（2026-11-05）：补 requests 使 QoS 从 BestEffort 变为 Burstable，
-        # 节点内存紧张时不再是最先被驱逐/OOM 的一批；不设 limit，避免正常使用被限死
+        # 节点内存紧张时不再是最先被驱逐/OOM 的一批
+        # 改动说明（2026-11-07）：补 memory limit 给 GC 硬边界，避免 GC 视整节点内存为可用而无限扩张
         resources:
           requests:
             cpu: 50m
             memory: 128Mi
+          limits:
+            memory: 512Mi
 
         # 改动说明：环境变量分为 ConfigMap（非敏感）和 Secret（敏感）两部分注入
+        env:
+        # 改动说明（2026-11-07）：改用 Workstation GC，规避 .NET Server GC 线程在 libc 内崩溃（exit 139）
+        - name: DOTNET_gcServer
+          value: "0"
         envFrom:
         - configMapRef:
             name: openfindbearings-mobile-config
