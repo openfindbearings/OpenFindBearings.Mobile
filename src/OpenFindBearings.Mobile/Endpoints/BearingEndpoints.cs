@@ -128,7 +128,10 @@ public static class BearingEndpoints
         string? Image3DUrl, string? Image2DUrl,
         int ViewCount, int FavoriteCount,
         // v1.6.0 数据可信联动：参数来源标注依据
-        string? DataSource = null);
+        string? DataSource = null,
+        // 改动说明（品牌与类型资料完善）：型号所属品牌与类型的档案，供详情页折叠卡展示
+        BrandProfileItem? BrandProfile = null,
+        BearingTypeProfileItem? TypeProfile = null);
 
     // v2.3.0 商城置顶卡：透传置顶态（买家侧角标 + 排序已由 API 完成）
     // v2.15.0 状态统一：IsOnSale/IsRestocking → SaleState(0=已下架/1=出售中/2=补货中)
@@ -154,6 +157,20 @@ public static class BearingEndpoints
         decimal InnerDiameter, decimal OuterDiameter, decimal Width,
         string? InterchangeType, string TypeLabel, int Confidence, string? Remarks,
         bool IsBidirectional, bool IsAutoRecommendable);
+
+    /// <summary>
+    /// 品牌资料（型号详情页「品牌资料」卡）：字段均可空，人工维护，前端只展示有值的项
+    /// </summary>
+    public record BrandProfileItem(
+        Guid Id, string Name, string? Country, int? FoundedYear, string? ParentCompany,
+        string? Website, string? Description, string? Advantages, string? SuffixNotes, string? MainApplications);
+
+    /// <summary>
+    /// 类型资料（型号详情页「类型说明」卡）：字段均可空，人工维护
+    /// </summary>
+    public record BearingTypeProfileItem(
+        Guid Id, string Name, string? EnglishName, string? Description, string? StructureFeatures,
+        string? LoadCharacteristics, string? TypicalPrefixes, string? MainApplications, bool? IsSeparable, string? ImageUrl);
 
     // ============ 工具 ============
 
