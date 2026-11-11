@@ -1,4 +1,4 @@
-﻿# Mobile BFF API 端点说明 v1.8.21
+﻿# Mobile BFF API 端点说明 v1.8.22
 
 ## 概述
 
@@ -12,6 +12,7 @@ OpenFindBearings.Mobile 作为移动端 BFF，所有端点统一挂载在 `/mobi
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| v1.8.22 | 2026-11-11 | **品牌与类型档案透传（无新增端点）**：`/mobile/bearings/{id}` 与 `/mobile/bearings/by-code/{code}` 响应新增 `brandProfile` / `typeProfile`（品牌：国家/成立年份/母公司/官网/简介/优势产品/后缀说明/主要应用；类型：英文名/简介/结构特征/承载特性/常用前置/主要应用/是否可分离/结构图），字段全部可空，前端按有值渲染折叠卡 |
 | v1.8.21 | 2026-11-06 | **商品批量维护代理（+1 端点）**：新增 `POST /mobile/merchant/bearings/batch`，透传 API `/api/merchant/bearings/batch` 的 `{ action, ids, percent?, restockEta? }` 与逐件结果 `{ succeeded, skipped, results[] }`（含 `oldPriceDescription`/`newPriceDescription`），上游失败原因原样透传 |
 | v1.8.20 | 2026-11-02 | **寻货管理权代办（无新增端点）**：`SourcingMerchantDemandItem` 新增 `CanManage` 透传（API `canManage` = 经办人本人或本店在职管理员），前端据此出/藏删除、转公开、多选入口；`IsMine` 语义收窄为"当前用户是经办人"（展示"由我发布"）。批量删除/取消/转公开/选定由 API 侧支持管理员代办，BFF 端点与请求体不变 |
 | v1.8.19 | 2026-11-01 | **商家等级徽章统一（无新增端点）**：`MerchantItem` 新增 `Grade`/`GradeDisplay` 透传（API `MerchantDto` 本就有这两个字段，此前 BFF 记录未声明，导致 Taro 搜索商家 Tab 只能显示"· 已认证"文本）。前端据此在搜索列表、型号详情在售商家行、商家详情头部统一渲染"身份徽章 + 等级徽章"，并把互联网来源商家显示为「互联网」（库里同为 Ordinary，但无账号、未入驻） |
