@@ -1,4 +1,4 @@
-﻿# Mobile BFF API 端点说明 v1.8.22
+﻿# Mobile BFF API 端点说明 v1.8.23
 
 ## 概述
 
@@ -12,6 +12,7 @@ OpenFindBearings.Mobile 作为移动端 BFF，所有端点统一挂载在 `/mobi
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| v1.8.23 | 2026-11-12 | **关注/取关失败原因透传（无新增端点）**：`POST`/`DELETE /mobile/me/follows/{merchantId}` 由 `PostVoidAsync`/`DeleteVoidAsync` 改走 `PostWithResultAsync`/`DeleteWithResultAsync`，把 API 的具体原因原样下发——「已关注过该商家」「不能关注自己的商户」「商家不存在」等，不再统一吞成「关注失败或已关注过」。响应仍为 `{ success, message, code? }`（200），成功文案不变 |
 | v1.8.22 | 2026-11-11 | **品牌与类型档案透传（无新增端点）**：`/mobile/bearings/{id}` 与 `/mobile/bearings/by-code/{code}` 响应新增 `brandProfile` / `typeProfile`（品牌：国家/成立年份/母公司/官网/简介/优势产品/后缀说明/主要应用；类型：英文名/简介/结构特征/承载特性/常用前置/主要应用/是否可分离/结构图），字段全部可空，前端按有值渲染折叠卡 |
 | v1.8.21 | 2026-11-06 | **商品批量维护代理（+1 端点）**：新增 `POST /mobile/merchant/bearings/batch`，透传 API `/api/merchant/bearings/batch` 的 `{ action, ids, percent?, restockEta? }` 与逐件结果 `{ succeeded, skipped, results[] }`（含 `oldPriceDescription`/`newPriceDescription`），上游失败原因原样透传 |
 | v1.8.20 | 2026-11-02 | **寻货管理权代办（无新增端点）**：`SourcingMerchantDemandItem` 新增 `CanManage` 透传（API `canManage` = 经办人本人或本店在职管理员），前端据此出/藏删除、转公开、多选入口；`IsMine` 语义收窄为"当前用户是经办人"（展示"由我发布"）。批量删除/取消/转公开/选定由 API 侧支持管理员代办，BFF 端点与请求体不变 |
@@ -412,8 +413,8 @@ OpenFindBearings.Mobile 作为移动端 BFF，所有端点统一挂载在 `/mobi
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/mobile/me/follows/{merchantId}` | 关注商家 |
-| DELETE | `/mobile/me/follows/{merchantId}` | 取消关注 |
+| POST | `/mobile/me/follows/{merchantId}` | 关注商家（失败原因透传：已关注过 / 不能关注自己的商户） |
+| DELETE | `/mobile/me/follows/{merchantId}` | 取消关注（失败原因透传） |
 | GET | `/mobile/me/follows/{merchantId}/check` | 检查是否已关注 |
 
 ### 浏览历史

@@ -59,10 +59,17 @@ public static class MeEndpoints
         {
             var token = GetToken(http);
             if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
-            var ok = await api.PostVoidAsync($"/api/me/follows/merchants/{merchantId}", token, ct);
-            return ok
+            // 改动说明：原 PostVoidAsync 只回 bool，把上游的具体原因（已关注过该商家 / 不能关注自己的商户）
+            //   吞成统一文案「关注失败或已关注过」；改走带结果透传的方法，把 API 的 detail 原样转给前端
+            var r = await api.PostWithResultAsync<object>($"/api/me/follows/merchants/{merchantId}", new { }, token, ct);
+            return r.Success
                 ? Results.Ok(new { success = true, message = "关注成功" })
-                : Results.Ok(new { success = false, message = "关注失败或已关注过" });
+                : Results.Ok(new
+                {
+                    success = false,
+                    message = r.ErrorText ?? "关注失败，请稍后重试",
+                    code = r.ErrorCode
+                });
         })
         .WithName("FollowMerchant")
         .WithSummary("关注商家");
@@ -73,8 +80,13 @@ public static class MeEndpoints
         {
             var token = GetToken(http);
             if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
-            var ok = await api.DeleteVoidAsync($"/api/me/follows/merchants/{merchantId}", token, ct);
-            return Results.Ok(new { success = ok, message = ok ? "已取消关注" : "取消失败" });
+            // 改动说明：同关注——取关也改为透传上游失败原因，不再统一回「取消失败」
+            var r = await api.DeleteWithResultAsync<object>($"/api/me/follows/merchants/{merchantId}", token, ct);
+            return Results.Ok(new
+            {
+                success = r.Success,
+                message = r.Success ? "已取消关注" : (r.ErrorText ?? "取消失败，请稍后重试")
+            });
         })
         .WithName("UnfollowMerchant")
         .WithSummary("取消关注商家");
