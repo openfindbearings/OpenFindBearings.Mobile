@@ -86,6 +86,9 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowTaro", policy =>
     {
         policy.WithOrigins(
+                // 本地联调：Taro H5 dev 默认 10086，历史 Wi-Fi 调试端口 10087 一并保留
+                "http://localhost:10086",
+                "http://127.0.0.1:10086",
                 "http://localhost:10087",
                 "http://172.26.32.1:10087",
                 "https://<your-mobile-domain>"
