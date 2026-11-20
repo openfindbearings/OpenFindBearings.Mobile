@@ -14,3 +14,6 @@ data:
   Identity__Scope: "api:mobile offline_access"
   # 受众=资源服务器名（与 API 的 aud 一致）
   Identity__Audience: "openfindbearings-api"
+  # 分享落地页（v1.8.24）：og 卡片跳转与图片绝对化的站点地址
+  Share__H5BaseUrl: "https://<your-h5-domain>"
+  Share__MediaBaseUrl: "https://<your-media-domain>/media"
