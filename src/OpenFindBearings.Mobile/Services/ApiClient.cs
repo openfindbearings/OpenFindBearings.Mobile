@@ -45,6 +45,30 @@ public class ApiClient
     }
 
     /// <summary>
+    /// GET 请求返回原始字节（图片等二进制资源），失败返回 null。
+    /// 分享二维码/海报由 API 生成，BFF 只做透明转发，不解析内容。
+    /// </summary>
+    public async Task<byte[]?> GetBytesAsync(string path, CancellationToken ct = default)
+    {
+        try
+        {
+            var client = CreateApiClient();
+            using var response = await client.GetAsync(path, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("API 二进制请求失败 {Path}: {Status}", path, (int)response.StatusCode);
+                return null;
+            }
+            return await response.Content.ReadAsByteArrayAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "API 二进制请求异常 {Path}", path);
+            return null;
+        }
+    }
+
+    /// <summary>
     /// GET 请求（公开接口，不带 JWT）
     /// </summary>
     public async Task<T?> GetAsync<T>(string path, CancellationToken ct = default) where T : class
