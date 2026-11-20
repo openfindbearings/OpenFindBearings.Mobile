@@ -74,6 +74,36 @@ public static class ShareEndpoints
         .AllowAnonymous();
     }
 
+    /// <summary>
+    /// 注册分享素材转发端点：GET /mobile/share/qr 与 GET /mobile/share/poster。
+    /// 二维码与海报统一由 API 生成（API 侧落对象存储缓存），BFF 只做匿名透明转发，
+    /// 保证移动端只依赖 BFF 一个域名。
+    /// </summary>
+    public static void MapShareAssetEndpoints(this IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/mobile/share");
+
+        group.MapGet("/qr", async (string type, Guid id, string? src, ApiClient api, CancellationToken ct) =>
+        {
+            var bytes = await api.GetBytesAsync(
+                $"/api/share/qr?type={Uri.EscapeDataString(type)}&id={id}&src={Uri.EscapeDataString(src ?? "qr")}", ct);
+            return bytes is null ? Results.NotFound() : Results.File(bytes, "image/png");
+        })
+        .WithName("MobileShareQr")
+        .WithSummary("分享二维码（转发 API）")
+        .AllowAnonymous();
+
+        group.MapGet("/poster", async (string type, Guid id, string? src, ApiClient api, CancellationToken ct) =>
+        {
+            var bytes = await api.GetBytesAsync(
+                $"/api/share/poster?type={Uri.EscapeDataString(type)}&id={id}&src={Uri.EscapeDataString(src ?? "poster")}", ct);
+            return bytes is null ? Results.NotFound() : Results.File(bytes, "image/png");
+        })
+        .WithName("MobileSharePoster")
+        .WithSummary("分享海报（转发 API）")
+        .AllowAnonymous();
+    }
+
     /// <summary>H5 站点 base（配置 Share:H5BaseUrl，去尾斜杠）</summary>
     private static string H5Base(IConfiguration config) => (config["Share:H5BaseUrl"] ?? string.Empty).TrimEnd('/');
 

@@ -1,4 +1,4 @@
-﻿# Mobile BFF API 端点说明 v1.8.23
+# Mobile BFF API 端点说明 v1.8.24
 
 ## 概述
 
@@ -12,7 +12,7 @@ OpenFindBearings.Mobile 作为移动端 BFF，所有端点统一挂载在 `/mobi
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
-| v1.8.23 | 2026-11-12 | **关注/取关失败原因透传（无新增端点）**：`POST`/`DELETE /mobile/me/follows/{merchantId}` 由 `PostVoidAsync`/`DeleteVoidAsync` 改走 `PostWithResultAsync`/`DeleteWithResultAsync`，把 API 的具体原因原样下发——「已关注过该商家」「不能关注自己的商户」「商家不存在」等，不再统一吞成「关注失败或已关注过」。响应仍为 `{ success, message, code? }`（200），成功文案不变 |
+| v1.8.24 | 2026-11-20 | **分享素材转发（+2 端点）**：新增匿名 `GET /mobile/share/qr`、`GET /mobile/share/poster`，透明转发 API 生成的二维码/海报 PNG；二维码与海报统一由 API 生成（API 侧落对象存储缓存），BFF 不再参与图片合成 || v1.8.23 | 2026-11-12 | **关注/取关失败原因透传（无新增端点）**：`POST`/`DELETE /mobile/me/follows/{merchantId}` 由 `PostVoidAsync`/`DeleteVoidAsync` 改走 `PostWithResultAsync`/`DeleteWithResultAsync`，把 API 的具体原因原样下发——「已关注过该商家」「不能关注自己的商户」「商家不存在」等，不再统一吞成「关注失败或已关注过」。响应仍为 `{ success, message, code? }`（200），成功文案不变 |
 | v1.8.22 | 2026-11-11 | **品牌与类型档案透传（无新增端点）**：`/mobile/bearings/{id}` 与 `/mobile/bearings/by-code/{code}` 响应新增 `brandProfile` / `typeProfile`（品牌：国家/成立年份/母公司/官网/简介/优势产品/后缀说明/主要应用；类型：英文名/简介/结构特征/承载特性/常用前置/主要应用/是否可分离/结构图），字段全部可空，前端按有值渲染折叠卡 |
 | v1.8.21 | 2026-11-06 | **商品批量维护代理（+1 端点）**：新增 `POST /mobile/merchant/bearings/batch`，透传 API `/api/merchant/bearings/batch` 的 `{ action, ids, percent?, restockEta? }` 与逐件结果 `{ succeeded, skipped, results[] }`（含 `oldPriceDescription`/`newPriceDescription`），上游失败原因原样透传 |
 | v1.8.20 | 2026-11-02 | **寻货管理权代办（无新增端点）**：`SourcingMerchantDemandItem` 新增 `CanManage` 透传（API `canManage` = 经办人本人或本店在职管理员），前端据此出/藏删除、转公开、多选入口；`IsMine` 语义收窄为"当前用户是经办人"（展示"由我发布"）。批量删除/取消/转公开/选定由 API 侧支持管理员代办，BFF 端点与请求体不变 |
@@ -824,3 +824,19 @@ BFF 调用 API 时统一附带请求头 `X-Internal-Token`（值取自配置 `In
 >   图片字段在 API 叫 `merchantImageUrls`，BFF 写成 `ImageUrls` 时绑定不到；`MallFeedItem` 则根本没声明商家图字段，反序列化直接丢弃。
 > 影响面：修复前商家管理页永远显示「商品实拍图（0/3）」且无法删除/设首图；商城卡片永远显示型号主图。
 > 配套文档：《API 端点说明 v1.59.4》《商城导购设计 v1.0.5》《移动端登录与商户入驻设计 v1.7.49》。
+
+---
+
+## 本版增量（v1.8.24）：分享素材转发（+2 端点）
+
+**动机**：二维码与海报属平台素材，统一由 API 生成并缓存到对象存储；BFF 只做匿名转发，保持移动端只依赖一个域名，也避免在 BFF 引入字体与图片合成依赖。
+
+### 新增端点（匿名）
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | /mobile/share/qr | 参数 `type=bearing\|merchant`、`id`、`src`；转发 `/api/share/qr` |
+| GET | /mobile/share/poster | 同参数；转发 `/api/share/poster` |
+
+- 转发采用新方法 `ApiClient.GetBytesAsync`（新增）：只读二进制、失败返回 null，由端点统一转 404
+- `/s/bearing/{id}` 与 `/s/merchant/{id}` 分享落地页保持不变，继续由 BFF 渲染 og 卡片
