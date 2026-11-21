@@ -60,6 +60,8 @@ public static class ProfileEndpoints
                 Industry = biz?.Industry,
                 // 改动说明：不再透传 MerchantId/MerchantName——API 已废弃并移除 User.MerchantId 单值列，
                 //   商户信息改由成员表接口单独获取
+                // 改动说明（v1.8.26）：下发默认商户，供移动端商户 Tab 直达与多设备一致
+                DefaultMerchantId = biz?.DefaultMerchantId,
                 FavoriteCount = biz?.FavoriteCount ?? 0,
                 FollowCount = biz?.FollowCount ?? 0,
                 IsActive = userInfo?.IsActive ?? true,
@@ -70,6 +72,26 @@ public static class ProfileEndpoints
         .WithName("GetProfile")
         .WithSummary("获取用户资料");
 
+        /// <summary>
+        /// 设置默认商户（v1.8.26）：透传 API /api/me/default-merchant，仅允许自己为在职成员的商户。
+        /// </summary>
+        group.MapPut("/default-merchant", async (
+            SetDefaultMerchantBody body,
+            ApiClient api,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var token = GetAccessToken(http);
+            if (string.IsNullOrEmpty(token))
+                return Results.Unauthorized();
+
+            var call = await api.PutWithResultAsync<object>("/api/me/default-merchant", body, token, ct);
+            return call.Success
+                ? Results.Ok(new { success = true, defaultMerchantId = body.MerchantId })
+                : BffProxy.Result(call, "设置默认商户失败");
+        })
+        .WithName("SetDefaultMerchant")
+        .WithSummary("设置默认商户");
         /// <summary>
         /// 设置/修改登录密码（代理 Identity /api/account/me/change-password，透传用户令牌）。
         /// 改动说明（验证码改密）：验证方式改为短信验证码 verifyCode（Identity type=reset_password），
@@ -168,6 +190,9 @@ public static class ProfileEndpoints
 
     // ============ DTO ============
 
+    /// <summary>设置默认商户请求体（v1.8.26）</summary>
+    public record SetDefaultMerchantBody(Guid MerchantId);
+
     /// <summary>BFF 聚合后的用户资料（Identity 账号信息 + API 业务资料）</summary>
     public class UserProfile
     {
@@ -179,6 +204,7 @@ public static class ProfileEndpoints
         public int? Occupation { get; set; }
         public string? CompanyName { get; set; }
         public string? Industry { get; set; }
+        public Guid? DefaultMerchantId { get; set; }
         public int FavoriteCount { get; set; }
         public int FollowCount { get; set; }
         public bool IsActive { get; set; }
@@ -195,6 +221,7 @@ public static class ProfileEndpoints
         int? Occupation,
         string? CompanyName,
         string? Industry,
+        Guid? DefaultMerchantId,
         int FavoriteCount,
         int FollowCount);
 
