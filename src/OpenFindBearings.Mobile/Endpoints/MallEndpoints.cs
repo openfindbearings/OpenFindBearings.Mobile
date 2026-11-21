@@ -41,6 +41,18 @@ public record MallConfirmResponse(int Settled);
 ///   原记录没有这两个字段，反序列化时把 API 返回的商家实拍图直接丢弃，
 ///   商城卡片只能回退型号主图，商家上传的图在商城形同虚设。
 /// </remarks>
+/// <summary>商城商品详情里的商家摘要（v1.8.25）：商品页底部「店铺」入口所需</summary>
+public record MallItemMerchant(
+    Guid Id, string Name, string? LogoUrl, string? Grade, bool IsVerified, string? Phone);
+
+/// <summary>
+/// 商城商品详情（v1.8.25）：商家 x 商品维度单品；
+/// Item 复用货源流卡片结构，另带商家摘要与型号/品牌描述。
+/// </summary>
+public record MallItemDetail(
+    MallFeedItem Item, MallItemMerchant Merchant,
+    string? BearingDescription, string? BrandDescription);
+
 public record MallFeedItem(
     Guid Id, Guid MerchantId, string? MerchantName, string? MerchantGrade, bool MerchantIsVerified,
     Guid BearingId, string BearingPartNumber, string? BearingOldNumber, string? BearingTypeName,
@@ -183,6 +195,21 @@ public static class MallEndpoints
         })
         .WithName("GetMallFeed")
         .WithSummary("商城货源流")
+        .AllowAnonymous();
+
+        /// <summary>商城商品详情（v1.8.25）：匿名可访问，透传 API /api/mall/items/{id}</summary>
+        group.MapGet("/items/{id:guid}", async (
+            Guid id, ApiClient api, HttpContext http, CancellationToken ct) =>
+        {
+            var call = await api.GetWithResultAsync<MallItemDetail>($"/api/mall/items/{id}", GetToken(http), ct);
+            if (!call.Success)
+                return BffProxy.Result(call, "商品详情加载失败，请稍后重试");
+            return call.Data == null
+                ? Results.Json(new { success = false, message = "商品详情响应解析失败" }, statusCode: 502)
+                : Results.Ok(call.Data);
+        })
+        .WithName("GetMallItemDetail")
+        .WithSummary("商城商品详情")
         .AllowAnonymous();
     }
 
