@@ -840,3 +840,7 @@ BFF 调用 API 时统一附带请求头 `X-Internal-Token`（值取自配置 `In
 
 - 转发采用新方法 `ApiClient.GetBytesAsync`（新增）：只读二进制、失败返回 null，由端点统一转 404
 - `/s/bearing/{id}` 与 `/s/merchant/{id}` 分享落地页保持不变，继续由 BFF 渲染 og 卡片
+
+## v1.8.27
+
+- /mobile/brands 与 /mobile/home 的品牌 DTO 补齐 level/description/searchPinyin/searchInitials/searchPinyinFuzzy：原投影只有 id/name/country，把 API 下发字段丢弃，品牌 Tab 因此拿不到拼音键与档次简介。
