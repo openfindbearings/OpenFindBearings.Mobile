@@ -77,14 +77,15 @@ public static class HomeEndpoints
         int? ProductCount,
         string? LogoUrl);
 
-    // 改动说明（v1.8.27）：补齐品牌档案与拼音检索键——原 record 只有 Id/Name/Country，
+    // 改动说明（v1.8.28）：Level 是 API 下发的枚举名字符串（BrandLevel.ToString()），
+    //   不能声明成 int——类型不符会让整批反序列化失败、品牌列表变空。原 record 只有 Id/Name/Country，
     //   把 API 下发的 level/description/searchPinyin 等字段全部丢弃，导致品牌 Tab 拿不到
     //   档次/简介/拼音，输入 ly 只能退回名称子串匹配（仅 LYC 命中）。
     public record BrandDto(
         Guid Id,
         string Name,
         string? Country,
-        int? Level,
+        string? Level,
         string? Description,
         string? SearchPinyin,
         string? SearchInitials,
