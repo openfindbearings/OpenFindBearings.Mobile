@@ -844,3 +844,6 @@ BFF 调用 API 时统一附带请求头 `X-Internal-Token`（值取自配置 `In
 ## v1.8.27
 
 - /mobile/brands 与 /mobile/home 的品牌 DTO 补齐 level/description/searchPinyin/searchInitials/searchPinyinFuzzy：原投影只有 id/name/country，把 API 下发字段丢弃，品牌 Tab 因此拿不到拼音键与档次简介。
+## v1.8.28
+
+- /mobile/brands 与 /mobile/home 的 BrandDto.Level 由 int 改为 string：API 下发的是 BrandLevel 枚举名，类型不符会让整批反序列化失败、品牌列表恒为空。
