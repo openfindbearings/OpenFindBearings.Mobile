@@ -69,6 +69,23 @@ public static class AchievementEndpoints
         .WithName("GetMerchantAchievements")
         .WithSummary("商户徽章排");
 
+        /// <summary>
+        /// 商户成就墙（v2.16.4）：透传 API /api/achievements/merchant-wall，
+        /// 返回商家维度全目录 + 本店进度（仅本店在职成员可读），供商家勋章页展示 N/M 与未解锁项
+        /// </summary>
+        group.MapGet("/merchant-wall", async (Guid merchantId, ApiClient api, HttpContext http, CancellationToken ct) =>
+        {
+            var token = GetToken(http);
+            if (string.IsNullOrEmpty(token)) return Results.Unauthorized();
+            var result = await api.GetAsync<AchievementWallResponse>($"/api/achievements/merchant-wall?merchantId={merchantId}", token, ct);
+            return result == null
+                ? Results.Json(new { success = false, message = "商家成就墙加载失败" }, statusCode: 502)
+                : Results.Ok(result);
+        })
+        .WithName("GetMerchantAchievementWall")
+        .WithSummary("商户成就墙")
+        .RequireAuthorization();
+
         /// <summary>我的称号列表与当前佩戴（v2.8.0 称号系统：选择佩戴数据源）</summary>
         group.MapGet("/titles", async (ApiClient api, HttpContext http, CancellationToken ct) =>
         {
